@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>Cat - cloud authentication tester</title>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+      <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body class="no-scrollbar">
+    <header>
+        <nav class="blue darken-3">
+            <div class="nav-wrapper">
+              <a href="/" class="brand-logo">
+                <img style="margin-top:8px;margin-left: 8px;" src="data:image/png;base64,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">
+                <span style="height:100%; vertical-align: top;">Cat</span>
+                <span class="light-blue-text text-accent-1" style="height:100%; vertical-align:top ;font-size:1rem;">cloud authentication tester</span>
+              </a>
+              <a href="#" data-target="mobile-menu" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+              <ul class="right hide-on-med-and-down">
+                <li class="active workflow-selector" data-target="oidcWorkflow"><a href="#" id="wf-oidc">OIDC</a></li>
+                <li class="workflow-selector" data-target="samlWorkflow"><a href="#" id="wf-saml" >SAML</a></li>
+              </ul>
+            </div>
+          </nav>
+        
+          <ul class="sidenav" id="mobile-menu">
+            <li class="active"><a href="#">OIDC</a></li>
+            <li><a href="#">SAML</a></li>
+          </ul>
+    </header>
+      <main class="">
+      <div id="oidcWorkflow" class="container workflow">
+          <div class="row">
+            <ul class="collapsible" data-current="{{.OidcData.Step}}">
+                <li class="active">
+                  <div class="collapsible-header"><i class="material-icons">settings</i>Parameters</div>
+                  <div class="collapsible-body">
+                      <div class="row">
+                        <form class="col s12" action="/oauth/setup" method="POST">
+                            <div class="row">
+                              <div class="col s12 m4" id="flowstyle" data-value="{{.OidcData.AuthFlow}}">
+                                <span>Authentication Flow Style</span>
+                              </div>
+                              <div class="col s12 m4">
+                                  <label>
+                                    <input class="with-gap" name="flow" value="code" type="radio"  />
+                                    <span>Authorization Code Flow</span>
+                                  </label>
+                              </div>
+                              <div class="col s12 m4">
+                                <label>
+                                  <input class="with-gap" name="flow" value="implicit" type="radio"  />
+                                  <span>Implicit Flow</span>
+                                </label>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="input-field col s12 m6">
+                                <input id="provider" name="provider" type="text" class="validate" value="{{.OidcData.ProviderURL}}">
+                                <label for="provider">Provider URL</label>
+                                <span class="helper-text"></span>
+                              </div>
+                              <div class="input-field col s12 m6">
+                                  <input id="redir" name="redir" type="text" disabled class="validate" value="{{.OidcData.RedirectURL}}">
+                                  <label for="redir">Redirect URI</label>
+                                  <span class="helper-text"></span>
+                              </div>
+                              <div class="input-field col s12 m6">
+                                  <input id="app" name="app" type="text" class="validate" value="{{.OidcData.AppID}}">
+                                  <label for="app">Application ID</label>
+                                  <span class="helper-text"></span>
+                              </div>
+                              <div class="input-field col s12 m6">
+                                  <input id="secret" name="secret" type="text" class="validate" value="{{.OidcData.ClientSecret}}">
+                                  <label for="secret">Client Secret</label>
+                                  <span class="helper-text"></span>
+                              </div>
+                              <div class="input-field col s12 m6">
+                                <input id="scope" name="scope" type="text" class="validate" value="{{.OidcData.Scope}}">
+                                <label for="scope">OIDC Scopes</label>
+                                <span class="helper-text">separated by spaces e.g "openid profile email"</span>
+                            </div>
+                              <button class="btn waves-effect waves-light blue darken-1" type="submit" name="action">Start Flow
+                                <i class="material-icons right">send</i>
+                              </button>
+                            </div>
+                        </form>
+                      </div>
+                  </div>
+                </li>
+                <li>
+                  <div class="collapsible-header"><i class="material-icons">vpn_key</i>Tokens</div>
+                  <div class="collapsible-body">
+                    <div class="row">
+                      {{ if .Error }}
+                      <div class="col m12 s12">
+                        <span class="token-title red-text accent-3-text">Error</span>
+                        <div class="row token">
+                          {{.Error}}
+                        </div>
+                      </div>
+                      {{ else }}
+                      <div class="col m12 s12">
+                        <span class="token-title blue-text accent-3-text">Access Token</span>
+                        <div class="row token">
+                          <pre>{{.OidcData.AccessToken}}</pre>
+                        </div>
+                      </div>
+                      <div class="col m12 s12">
+                        <span class="token-title blue-text accent-3-text">ID Token</span>
+                        <div class="row token">
+                          <pre>{{.OidcData.IDToken}}</pre>
+                        </div>
+                      </div>
+                      <div class="col m12 s12">
+                        <span class="token-title blue-text accent-3-text">Userinfo</span>
+                        <div class="row token">
+                          <pre>{{.OidcData.UserInfo}}</pre>
+                        </div>
+                      </div>
+                      {{ end }}
+                    </div>
+                  </div>
+                </li>
+              </ul>
+          </div>
+      </div>
+      <div id="samlWorkflow" class="container workflow">
+        <div class="row">
+          <ul class="collapsible saml" data-current="{{.SamlData.Step}}">
+            <li class="active">
+              <div class="collapsible-header"><i class="material-icons">settings</i>Parameters</div>
+              <div class="collapsible-body">
+                <div class="row">
+                  <form class="col s12" id="samlForm" action="/saml/setup">
+                    <div class="input-field col s12 m12">
+                      <input id="metadata" name="metadata" type="text" class="validate" value="{{.SamlData.IDPMetadataURL}}">
+                      <label for="metadata">Metadata URL</label>
+                      <span class="helper-text"></span>
+                    </div>
+                    <div class="input-field col s12 m12">
+                      <input id="sp_meta" name="sp_meta" type="text" class="validate" disabled value="{{.SamlData.SPMetadataURL}}">
+                      <label for="sp_meta">Service Provider Metadata URL</label>
+                      <span class="helper-text">give this url to the IDP</span>
+                    </div>
+                    <button class="btn waves-effect waves-light blue darken-1" type="submit" name="create">Create Service Provider
+                      <i class="material-icons right">save</i>
+                    </button>
+                    <button class="btn waves-effect waves-light blue darken-1" type="button" onclick="location.href = '/saml/callback'" name="start">Start
+                      <i class="material-icons right">send</i>
+                    </button>
+                  </form>
+                  <div class="row">
+                    <div class="col s12 m12">
+                      <p class="note">NameID Format must be <b>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</b></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div class="collapsible-header"><i class="material-icons">vpn_key</i>Token</div>
+              <div class="collapsible-body">
+                <div class="row">
+                  {{ if .Error }}
+                  <div class="col m12 s12">
+                    <span class="token-title red-text accent-3-text">Error</span>
+                    <div class="row token">
+                      {{.Error}}
+                    </div>
+                  </div>
+                  {{ else }}
+                  <div class="col m12 s12">
+                    <div class="row token">
+                      <pre>{{.SamlData.Token}}</pre>
+                    </div>
+                  </div>
+                  {{ end }}
+                  <div class="row">
+                    <div class="col s12 m12" style="text-align:center">
+                      <button class="btn waves-effect waves-light blue darken-1" onclick="location.href='/saml/restart'">Restart Flow
+                        <i class="material-icons right">send</i>
+                      </button>
+                    </div>
+                  </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </main>
+    <footer class="page-footer white">
+      <div class="footer-copyright blue darken-3">
+        <div class="container">
+          <div class="row">
+            <div class="col s4 m4">© 2021 Philipp Ritter</div>
+            <div class="col s4 m4"><span class="version">Commit: {{.Version}}</span></div>
+            <div class="col s4 m4"><span class="grey-text text-lighten-4 right">made with ❤️ and ☕</span></div>
+          </div>
+        </div>
+      </div>
+    </footer>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function(){
+          M.AutoInit();
+          var flow = document.getElementById("flowstyle").dataset.value;
+          if(flow === null || flow === ""){
+            document.querySelectorAll("input[name=flow]")[0].checked = true
+          }else{
+            document.querySelector("input[value="+flow+"]").checked = true;
+          }
+      })
+      setTimeout(function(){document.querySelectorAll(".input-field").forEach(e => { if (e.querySelector("input").value != "") {e.querySelector("label").classList.add("active")} })}, 1)
+      document.querySelectorAll(".workflow-selector").forEach(el => {
+        el.addEventListener("click", function(){
+          document.querySelectorAll(".workflow").forEach(c => {c.style.display="none"})
+          document.getElementById(event.target.parentElement.dataset["target"]).style.display="block";
+          document.querySelectorAll(".workflow-selector").forEach(c => {c.classList.remove("active")})
+          event.target.parentElement.style.display="block";
+          event.target.parentElement.classList.add("active");
+          localStorage.setItem("workflow", event.target.id);
+          // Select current collapsible element
+          let collapseEl = document.getElementById(event.target.parentElement.dataset.target).querySelector(".collapsible")
+          let collapsible = M.Collapsible.init(collapseEl, {});
+          collapsible.open(collapseEl.dataset.current);
+        })
+      })
+      let currentWorkflow = localStorage.getItem("workflow");
+          if(currentWorkflow === null || currentWorkflow === ""){
+            currentWorkflow = document.querySelector(".workflow-selector.active a").id
+          }
+          document.getElementById(currentWorkflow).click();
+
+    </script>
+  </body>
+</html>

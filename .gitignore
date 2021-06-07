@@ -1,0 +1,3 @@
+.vscode
+cmd/Cat/*.json
+__debug_bin

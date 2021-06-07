@@ -1,0 +1,55 @@
+body {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    }
+main {
+  flex: 1 0 auto;
+}
+
+.token {
+  background-color: #464646;
+  color: #ffffff;
+  padding: 10px;
+}
+
+.token-title {
+  font-weight:700
+}
+
+.workflow {
+  margin-bottom:75px;
+}
+
+.page-footer {
+  position: fixed;
+  bottom: 0px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  min-height: 50px;
+  padding-top: 0;
+  color: var(--text-secondary-color);
+}
+
+.page-footer .footer-copyright {
+  width: 100%;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display:none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.note {
+  font-size: 0.8rem;
+  color: #a1a1a1;
+}
+
+.version {
+  font-size: 0.8rem;
+}
