@@ -32,6 +32,20 @@
           </ul>
     </header>
       <main class="">
+      {{if .Error}}
+      <div id="error" class="container">
+        <div class="row">
+          <div class="col s12">
+            <div class="card red lighten-1">
+              <div class="card-content white-text">
+                <span class="card-title">Error</span>
+                <p>{{.Error}}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{end}}
       <div id="oidcWorkflow" class="container workflow">
           <div class="row">
             <ul class="collapsible" data-current="{{.OidcData.Step}}">
@@ -95,14 +109,6 @@
                   <div class="collapsible-header"><i class="material-icons">vpn_key</i>Tokens</div>
                   <div class="collapsible-body">
                     <div class="row">
-                      {{ if .Error }}
-                      <div class="col m12 s12">
-                        <span class="token-title red-text accent-3-text">Error</span>
-                        <div class="row token">
-                          {{.Error}}
-                        </div>
-                      </div>
-                      {{ else }}
                       <div class="col m12 s12">
                         <span class="token-title blue-text accent-3-text">Access Token</span>
                         <div class="row token">
@@ -121,7 +127,6 @@
                           <pre>{{.OidcData.UserInfo}}</pre>
                         </div>
                       </div>
-                      {{ end }}
                     </div>
                   </div>
                 </li>
@@ -165,27 +170,19 @@
               <div class="collapsible-header"><i class="material-icons">vpn_key</i>Token</div>
               <div class="collapsible-body">
                 <div class="row">
-                  {{ if .Error }}
-                  <div class="col m12 s12">
-                    <span class="token-title red-text accent-3-text">Error</span>
-                    <div class="row token">
-                      {{.Error}}
-                    </div>
-                  </div>
-                  {{ else }}
                   <div class="col m12 s12">
                     <div class="row token">
                       <pre>{{.SamlData.Token}}</pre>
                     </div>
                   </div>
-                  {{ end }}
-                  <div class="row">
-                    <div class="col s12 m12" style="text-align:center">
-                      <button class="btn waves-effect waves-light blue darken-1" onclick="location.href='/saml/restart'">Restart Flow
-                        <i class="material-icons right">send</i>
-                      </button>
-                    </div>
+                </div>
+                <div class="row">
+                  <div class="col s12 m12" style="text-align:center">
+                    <button class="btn waves-effect waves-light blue darken-1" onclick="location.href='/saml/restart'">Restart Flow
+                      <i class="material-icons right">send</i>
+                    </button>
                   </div>
+                </div>
             </li>
           </ul>
         </div>
