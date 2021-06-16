@@ -35,7 +35,7 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		err      error
 		provider *oidc.Provider
 		config   oauth2.Config
-		hdat     templateData
+		tplData  templateData
 	)
 
 	ctx := context.Background()
@@ -46,33 +46,33 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hdat = wfOidc.parseInput(r.Form)
+	tplData = wfOidc.parseInput(r.Form)
 
-	provider, err = oidc.NewProvider(ctx, hdat.OidcData.ProviderURL)
+	provider, err = oidc.NewProvider(ctx, tplData.OidcData.ProviderURL)
 	if err != nil {
-		hdat.Error = err.Error()
-		renderIndex(w, r, hdat)
+		tplData.Error = "oidc - NewProvider - " + strings.Split(err.Error(), ":")[0]
+		renderIndex(w, r, tplData)
 		return
 	}
 
 	config = oauth2.Config{
-		ClientID:     hdat.OidcData.AppID,
-		ClientSecret: hdat.OidcData.ClientSecret,
+		ClientID:     tplData.OidcData.AppID,
+		ClientSecret: tplData.OidcData.ClientSecret,
 		RedirectURL:  wfOidc.callbackUrl(r),
 		Endpoint:     provider.Endpoint(),
-		Scopes:       strings.Split(hdat.OidcData.Scope, " "),
+		Scopes:       strings.Split(tplData.OidcData.Scope, " "),
 	}
 
 	s := Session{
 		Added:    time.Now(),
 		Provider: provider,
-		HtmlData: hdat,
+		HtmlData: tplData,
 		Config:   config,
 		State:    RandomString(16),
 	}
 
 	h := sha256.New()
-	h.Write([]byte(hdat.OidcData.AppID + hdat.OidcData.ProviderURL + hdat.OidcData.RedirectURL + hdat.OidcData.ClientSecret + cfg.CookieSecret))
+	h.Write([]byte(tplData.OidcData.AppID + tplData.OidcData.ProviderURL + tplData.OidcData.RedirectURL + tplData.OidcData.ClientSecret + cfg.CookieSecret))
 	hash := hex.EncodeToString(h.Sum(nil))
 
 	Sessions.Add(hash, s)
