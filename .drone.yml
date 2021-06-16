@@ -45,7 +45,7 @@ steps:
   - GOOS=windows GOARCH=386 go build -o dist/Cat-win-386.exe ./cmd/Cat/
   
 - name: publish-artifacts
-  image: pheelee/drone-gitea-release
+  image: plugins/gitea-release
   settings:
     api_key: 
       from_secret: gitea_api_key
