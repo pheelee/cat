@@ -36,7 +36,8 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 
 	samlMw, err = setupSaml(cfg.Certificate, fmt.Sprintf("%s://%s", scheme, r.Host), mdurl)
 	if err != nil {
-		panic(err)
+		renderError(w, r, fmt.Sprintf("Could not setup SAML Service Provider<br>%s", err))
+		return
 	}
 	h := sha256.New()
 	h.Write([]byte(mdurl + cfg.CookieSecret))
@@ -70,16 +71,16 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 func setupSaml(cert *cert.Certificate, rootUrl string, metadataUrl string) (*samlsp.Middleware, error) {
 	url, err := url.Parse(rootUrl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setupSaml - parse root url - %s", err)
 	}
 	// Fetch Metadata
 	idpMd, err := url.Parse(metadataUrl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setupSaml - parse metadata url - %s", err)
 	}
 	meta, err := samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMd)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setupSaml - idp fetch metadata - %s", err)
 	}
 	sp, err := samlsp.New(samlsp.Options{
 		URL:         *url,
@@ -89,7 +90,7 @@ func setupSaml(cert *cert.Certificate, rootUrl string, metadataUrl string) (*sam
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setupSaml - samlSp.new - %s", err)
 	}
 
 	return sp, nil
