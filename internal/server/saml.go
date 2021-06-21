@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,16 +15,17 @@ import (
 
 type SamlWorkflow struct{}
 
-var samlMw *samlsp.Middleware
-
-type Map map[string]interface{}
+func (wf *SamlWorkflow) index(w http.ResponseWriter, r *http.Request) {
+	renderIndex(w, r, &templateData{Workflow: "saml"})
+}
 
 func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
+	var samlMw *samlsp.Middleware
 	var err error
 	r.ParseForm()
 	mdurl := r.Form.Get("metadata")
 	if mdurl == "" {
-		renderError(w, r, "metadata parameter missing")
+		renderIndex(w, r, &templateData{})
 		return
 	}
 	scheme := r.URL.Scheme
@@ -36,26 +35,18 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 
 	samlMw, err = setupSaml(cfg.Certificate, fmt.Sprintf("%s://%s", scheme, r.Host), mdurl)
 	if err != nil {
-		renderError(w, r, fmt.Sprintf("Could not setup SAML Service Provider<br>%s", err))
+		renderIndex(w, r, &templateData{Error: fmt.Sprintf("Could not setup SAML Service Provider<br>%s", err)})
 		return
 	}
-	h := sha256.New()
-	h.Write([]byte(mdurl + cfg.CookieSecret))
-	hash := hex.EncodeToString(h.Sum(nil))
+	id := IDFromCookieOrNew(r)
 	s := Session{
 		Added:  time.Now(),
 		SamlMw: samlMw,
-		HtmlData: templateData{
-			SamlData: samlData{
-				IDPMetadataURL: mdurl,
-				SPMetadataURL:  fmt.Sprintf("%s/%s", samlMw.ServiceProvider.MetadataURL.String(), hash),
-			},
-		},
 	}
-	Sessions.Add(hash, s)
+	Sessions.Add(&s, id)
 	c := http.Cookie{
 		Name:     string(sessKey),
-		Value:    hash,
+		Value:    id,
 		Path:     "/",
 		Expires:  time.Now().Add(Sessions.Lifetime),
 		HttpOnly: true,
@@ -65,7 +56,10 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &c)
 	http.SetCookie(w, &http.Cookie{Name: "token", MaxAge: -1, Path: "/", HttpOnly: true, Domain: r.Host})
-	renderIndex(w, r, s.HtmlData)
+	renderIndex(w, r, &templateData{SamlData: samlData{
+		IDPMetadataURL: mdurl,
+		SPMetadataURL:  fmt.Sprintf("%s/%s", samlMw.ServiceProvider.MetadataURL.String(), id),
+	}})
 }
 
 func setupSaml(cert *cert.Certificate, rootUrl string, metadataUrl string) (*samlsp.Middleware, error) {
@@ -103,7 +97,7 @@ func (wf *SamlWorkflow) metadata(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = "/saml/metadata"
 		s := Sessions.Get(m[1])
 		if s == nil {
-			renderError(w, r, "Session not found")
+			renderIndex(w, r, &templateData{Error: "Session not found"})
 			return
 		}
 		s.SamlMw.ServeHTTP(w, r)
@@ -126,8 +120,8 @@ func (wf *SamlWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	b, err := json.MarshalIndent(jwtSessionClaims, "", "  ")
 	if err == nil {
-		s.HtmlData.SamlData.Token = string(b)
-		s.HtmlData.SamlData.Step = 1
-		renderIndex(w, r, s.HtmlData)
+		renderIndex(w, r, &templateData{SamlData: samlData{Token: string(b)}})
+		return
 	}
+	renderIndex(w, r, &templateData{Error: err.Error()})
 }

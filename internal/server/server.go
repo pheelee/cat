@@ -2,9 +2,9 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
-	"encoding/base64"
-	"encoding/json"
+	"encoding/hex"
 	"math/rand"
 	"net/http"
 	"os"
@@ -36,6 +36,8 @@ type Config struct {
 }
 
 type templateData struct {
+	Workflow string
+	Step     int
 	Error    string
 	OidcData oidcData
 	SamlData samlData
@@ -43,7 +45,6 @@ type templateData struct {
 }
 
 type oidcData struct {
-	Step         int
 	ProviderURL  string
 	RedirectURL  string
 	AppID        string
@@ -56,10 +57,17 @@ type oidcData struct {
 }
 
 type samlData struct {
-	Step           int
 	IDPMetadataURL string
 	SPMetadataURL  string
 	Token          string
+}
+
+func IDFromCookieOrNew(r *http.Request) string {
+	c, err := r.Cookie(string(sessKey))
+	if err == nil {
+		return c.Value
+	}
+	return RandomHash()
 }
 
 func RandomString(n int) string {
@@ -71,52 +79,44 @@ func RandomString(n int) string {
 	return string(b)
 }
 
-func PrettyToken(t string) string {
-	b, err := base64.RawStdEncoding.DecodeString(t)
-	if err != nil {
-		return ""
-	}
-	var o map[string]interface{}
-	err = json.Unmarshal(b, &o)
-	if err != nil {
-		return ""
-	}
-	b, _ = json.MarshalIndent(o, "", "    ")
-	return string(b)
+func RandomHash() string {
+	var b []byte = make([]byte, 32)
+	rand.Read(b)
+	h := sha256.New()
+	h.Write(b)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func redirectHome(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func renderIndex(w http.ResponseWriter, r *http.Request, h templateData) {
+func renderIndex(w http.ResponseWriter, r *http.Request, d *templateData) {
 	var tpl *template.Template
 	if cfg.StaticDir != "" {
 		tpl = template.Must(template.ParseFiles(cfg.StaticDir + "/index.html"))
 	} else {
 		tpl = template.Must(template.ParseFS(f, "index.html"))
 	}
-	// TODO: merge here with existing session data?
-	h.OidcData.RedirectURL = wfOidc.callbackUrl(r)
-	h.Version = VERSION
-	tpl.Execute(w, h)
-}
-
-func renderError(w http.ResponseWriter, r *http.Request, e string) {
-	d := templateData{OidcData: oidcData{Step: 1}, SamlData: samlData{Step: 1}, Error: e}
-	renderIndex(w, r, d)
+	p := strings.Split(r.URL.Path, "/")
+	d.Version = VERSION
+	d.Workflow = p[1]
+	if len(p) > 2 && p[2] == "callback" {
+		d.Step = 1
+	}
+	tpl.Execute(w, d)
 }
 
 func requireSession(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(string(sessKey))
 		if err != nil {
-			renderError(w, r, "Invalid Session Cookie")
+			renderIndex(w, r, &templateData{Error: "Missing Cookie"})
 			return
 		}
 		s := Sessions.Get(c.Value)
 		if s == nil {
-			renderError(w, r, "Session not found")
+			renderIndex(w, r, &templateData{Error: "Session not found"})
 			return
 		}
 
@@ -142,8 +142,8 @@ func SetupRoutes(c *Config) http.Handler {
 	var fs http.Handler
 	cfg = c
 	root := mux.NewRouter()
-	saml := root.PathPrefix("/saml/").Subrouter()
-
+	saml := root.PathPrefix("/saml").Subrouter()
+	saml.HandleFunc("", wfSaml.index).Methods("GET")
 	saml.Handle("/callback", requireSession(wfSaml.callback)).Methods("POST", "GET")
 	saml.Handle("/acs", requireSession(func(w http.ResponseWriter, r *http.Request) {
 		r.Context().Value(sessKey).(*Session).SamlMw.ServeHTTP(w, r)
@@ -154,11 +154,13 @@ func SetupRoutes(c *Config) http.Handler {
 		http.Redirect(w, r, "/saml/callback", http.StatusTemporaryRedirect)
 	})
 	saml.PathPrefix("/metadata/").HandlerFunc(wfSaml.metadata)
-	oauth := root.PathPrefix("/oauth").Subrouter()
-	oauth.HandleFunc("/setup", wfOidc.setup).Methods("POST")
-	oauth.HandleFunc("/setup", redirectHome).Methods("GET")
-	oauth.Handle("/callback", requireSession(wfOidc.callback)).Methods("POST")
-	oauth.HandleFunc("/callback", redirectHome).Methods("GET")
+	oidc := root.PathPrefix("/oidc").Subrouter()
+	oidc.HandleFunc("", wfOidc.index).Methods("GET")
+	oidc.HandleFunc("/setup", wfOidc.setup).Methods("POST")
+	oidc.HandleFunc("/setup", redirectHome).Methods("GET")
+	oidc.Handle("/restart", requireSession(wfOidc.restart)).Methods("GET")
+	oidc.Handle("/callback", requireSession(wfOidc.callback)).Methods("POST")
+	oidc.HandleFunc("/callback", redirectHome).Methods()
 	if cfg.StaticDir != "" {
 		fs = http.FileServer(http.Dir(cfg.StaticDir))
 	} else {
@@ -166,12 +168,7 @@ func SetupRoutes(c *Config) http.Handler {
 	}
 
 	root.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		d := templateData{OidcData: oidcData{Step: 0, Scope: "openid", AuthFlow: "code"}}
-		s := GetSession(r)
-		if s != nil {
-			d = s.HtmlData
-		}
-		renderIndex(w, r, d)
+		http.Redirect(w, r, "/oidc", http.StatusFound)
 	})
 	root.PathPrefix("/").Handler(fs)
 	root.Use(handlers.RecoveryHandler())

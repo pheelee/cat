@@ -13,24 +13,24 @@ import (
 
 var shutdown bool = false
 
-var Sessions SessionMap = SessionMap{
+var Sessions SessionManager = SessionManager{
 	Lifetime: 12 * time.Hour,
-	Items:    map[string]Session{},
+	Items:    map[string]*Session{},
 }
 
 type Session struct {
-	Added    time.Time
-	Provider *oidc.Provider
-	Config   oauth2.Config
-	SamlMw   *samlsp.Middleware
-	HtmlData templateData
-	State    string
+	Added         time.Time
+	Provider      *oidc.Provider
+	Config        *oauth2.Config
+	OAuthCodeOpts []oauth2.AuthCodeOption
+	SamlMw        *samlsp.Middleware
+	State         string
 }
 
-type SessionMap struct {
+type SessionManager struct {
 	sync.Mutex
 	Lifetime time.Duration
-	Items    map[string]Session
+	Items    map[string]*Session
 }
 
 func GetSession(r *http.Request) *Session {
@@ -41,24 +41,24 @@ func GetSession(r *http.Request) *Session {
 	return Sessions.Get(c.Value)
 }
 
-func (s *SessionMap) Add(hash string, sess Session) {
-	s.Mutex.Lock()
-	s.Items[hash] = sess
-	s.Mutex.Unlock()
+func (m *SessionManager) Add(s *Session, hash string) {
+	m.Mutex.Lock()
+	m.Items[hash] = s
+	m.Mutex.Unlock()
 	fmt.Printf("%s Session added %s\n", time.Now(), hash)
 }
 
-func (s *SessionMap) Remove(hash string) {
-	s.Mutex.Lock()
-	delete(s.Items, hash)
-	s.Mutex.Unlock()
+func (m *SessionManager) Remove(hash string) {
+	m.Mutex.Lock()
+	delete(m.Items, hash)
+	m.Mutex.Unlock()
 	fmt.Printf("%s Session deleted %s\n", time.Now(), hash)
 }
 
-func (sm *SessionMap) Get(hash string) *Session {
-	s, ok := sm.Items[hash]
+func (m *SessionManager) Get(hash string) *Session {
+	s, ok := m.Items[hash]
 	if ok {
-		return &s
+		return s
 	}
 	return nil
 }

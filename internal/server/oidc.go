@@ -2,10 +2,10 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,25 +17,27 @@ import (
 
 type OidcWorkflow struct{}
 
-func (wf *OidcWorkflow) parseInput(u url.Values) templateData {
-	return templateData{
-		OidcData: oidcData{
-			ProviderURL:  u.Get("provider"),
-			RedirectURL:  u.Get("redir"),
-			AppID:        u.Get("app"),
-			ClientSecret: u.Get("secret"),
-			Scope:        u.Get("scope"),
-			AuthFlow:     u.Get("flow"),
-		},
+func (wf *OidcWorkflow) index(w http.ResponseWriter, r *http.Request) {
+	renderIndex(w, r, &templateData{Workflow: "oidc"})
+}
+
+func (wf *OidcWorkflow) parseInput(u url.Values) *oidcData {
+	return &oidcData{
+		ProviderURL:  template.HTMLEscapeString(u.Get("provider")),
+		RedirectURL:  template.HTMLEscapeString(u.Get("redir")),
+		AppID:        template.HTMLEscapeString(u.Get("app")),
+		ClientSecret: template.HTMLEscapeString(u.Get("secret")),
+		Scope:        template.HTMLEscapeString(u.Get("scope")),
+		AuthFlow:     template.HTMLEscapeString(u.Get("flow")),
 	}
 }
 
 func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 	var (
-		err      error
-		provider *oidc.Provider
-		config   oauth2.Config
-		tplData  templateData
+		err       error
+		provider  *oidc.Provider
+		config    oauth2.Config
+		userInput *oidcData
 	)
 
 	ctx := context.Background()
@@ -46,39 +48,33 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tplData = wfOidc.parseInput(r.Form)
+	userInput = wfOidc.parseInput(r.Form)
 
-	provider, err = oidc.NewProvider(ctx, tplData.OidcData.ProviderURL)
+	provider, err = oidc.NewProvider(ctx, userInput.ProviderURL)
 	if err != nil {
-		tplData.Error = "oidc - NewProvider - " + strings.Split(err.Error(), ":")[0]
-		renderIndex(w, r, tplData)
+		renderIndex(w, r, &templateData{Error: "oidc - NewProvider - " + template.HTMLEscapeString(err.Error())})
 		return
 	}
 
 	config = oauth2.Config{
-		ClientID:     tplData.OidcData.AppID,
-		ClientSecret: tplData.OidcData.ClientSecret,
+		ClientID:     userInput.AppID,
+		ClientSecret: userInput.ClientSecret,
 		RedirectURL:  wfOidc.callbackUrl(r),
 		Endpoint:     provider.Endpoint(),
-		Scopes:       strings.Split(tplData.OidcData.Scope, " "),
+		Scopes:       strings.Split(userInput.Scope, " "),
 	}
 
-	s := Session{
+	id := IDFromCookieOrNew(r)
+	s := &Session{
 		Added:    time.Now(),
 		Provider: provider,
-		HtmlData: tplData,
-		Config:   config,
+		Config:   &config,
 		State:    RandomString(16),
 	}
-
-	h := sha256.New()
-	h.Write([]byte(tplData.OidcData.AppID + tplData.OidcData.ProviderURL + tplData.OidcData.RedirectURL + tplData.OidcData.ClientSecret + cfg.CookieSecret))
-	hash := hex.EncodeToString(h.Sum(nil))
-
-	Sessions.Add(hash, s)
+	Sessions.Add(s, id)
 	c := http.Cookie{
 		Name:     string(sessKey),
-		Value:    hash,
+		Value:    id,
 		Path:     "/",
 		Expires:  time.Now().Add(Sessions.Lifetime),
 		HttpOnly: true,
@@ -87,14 +83,20 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteNoneMode,
 	}
 
-	response := oauth2.SetAuthURLParam("response_type", "code")
-	if s.HtmlData.OidcData.AuthFlow == "implicit" {
-		response = oauth2.SetAuthURLParam("response_type", "id_token token")
+	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_type", "code"))
+	if userInput.AuthFlow == "implicit" {
+		s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_type", "id_token token"))
 	}
-	nonce := oauth2.SetAuthURLParam("nonce", s.State)
-	method := oauth2.SetAuthURLParam("response_mode", "form_post")
+	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("nonce", s.State))
+	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_mode", "form_post"))
 	http.SetCookie(w, &c)
-	http.Redirect(w, r, config.AuthCodeURL(s.State, response, nonce, method), http.StatusFound)
+	http.Redirect(w, r, config.AuthCodeURL(s.State, s.OAuthCodeOpts...), http.StatusFound)
+}
+
+func (wf *OidcWorkflow) restart(w http.ResponseWriter, r *http.Request) {
+	s := r.Context().Value(sessKey).(*Session)
+	s.State = RandomString(16)
+	http.Redirect(w, r, s.Config.AuthCodeURL(s.State, s.OAuthCodeOpts...), http.StatusFound)
 }
 
 func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
@@ -103,20 +105,14 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 	e := r.FormValue("error")
 	if e != "" {
 		ed, _ := url.QueryUnescape(r.FormValue("error_description"))
-		renderError(w, r, fmt.Sprintf("error: %s<br>error_description: %s", e, ed))
+		renderIndex(w, r, &templateData{Error: fmt.Sprintf("error: %s<br>error_description: %s", e, ed)})
 		return
 	}
 
-	// get session from cookie
-	c, err := r.Cookie(string(sessKey))
-	if err != nil {
-		renderError(w, r, err.Error())
-		return
-	}
-	//ToDo: Build for POST requests another function
-	s := Sessions.Get(c.Value)
+	//TODO: Build for POST requests another function
+	s := GetSession(r)
 	if s == nil {
-		renderError(w, r, "Session not found")
+		renderIndex(w, r, &templateData{Error: "Session not found"})
 		return
 	}
 
@@ -124,18 +120,17 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 	state := r.FormValue("state")
 
 	if s.State != state {
-		renderError(w, r, "invalid state")
+		renderIndex(w, r, &templateData{Error: "invalid state"})
 		return
 	}
 
 	// if the flow is implicit
 	var raw_id, raw_access string
 	var userinfo *oidc.UserInfo
-	switch s.HtmlData.OidcData.AuthFlow {
-	case "code":
+	if code != "" {
 		t, err := s.Config.Exchange(context.Background(), code)
 		if err != nil {
-			renderError(w, r, err.Error())
+			renderIndex(w, r, &templateData{Error: err.Error()})
 			return
 		}
 		raw_id = t.Extra("id_token").(string)
@@ -145,19 +140,18 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Print(err)
 		}
-	case "implicit":
+	} else {
 		raw_id = r.FormValue("id_token")
 		raw_access = r.FormValue("access_token")
 	}
-
-	s.HtmlData.OidcData.Step = 1
+	var data oidcData
 	if raw_access != "" {
-		s.HtmlData.OidcData.AccessToken = PrettyToken(strings.Split(raw_access, ".")[1])
+		data.AccessToken = PrettyToken(strings.Split(raw_access, ".")[1])
 	}
-	s.HtmlData.OidcData.IDToken = PrettyToken(strings.Split(raw_id, ".")[1])
+	data.IDToken = PrettyToken(strings.Split(raw_id, ".")[1])
 	b, _ := json.MarshalIndent(userinfo, "", "    ")
-	s.HtmlData.OidcData.UserInfo = string(b)
-	renderIndex(w, r, s.HtmlData)
+	data.UserInfo = string(b)
+	renderIndex(w, r, &templateData{OidcData: data})
 }
 
 func (wf *OidcWorkflow) callbackUrl(r *http.Request) string {
@@ -166,5 +160,19 @@ func (wf *OidcWorkflow) callbackUrl(r *http.Request) string {
 			r.URL.Scheme = r.Header.Get("X-Forwarded-Proto")
 		}
 	}
-	return fmt.Sprintf("%s://%s/oauth/callback", r.URL.Scheme, r.Host)
+	return fmt.Sprintf("%s://%s/oidc/callback", r.URL.Scheme, r.Host)
+}
+
+func PrettyToken(t string) string {
+	b, err := base64.RawStdEncoding.DecodeString(t)
+	if err != nil {
+		return ""
+	}
+	var o map[string]interface{}
+	err = json.Unmarshal(b, &o)
+	if err != nil {
+		return ""
+	}
+	b, _ = json.MarshalIndent(o, "", "    ")
+	return string(b)
 }

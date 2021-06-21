@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
       <title>Cat - cloud authentication tester</title>
       <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="/static/materialize.min.css">
       <link rel="stylesheet" href="/static/app.css">
   </head>
-  <body class="no-scrollbar">
+  <body class="no-scrollbar" data-workflow="{{.Workflow}}" data-step="{{.Step}}">
     <header>
         <nav class="blue darken-3">
             <div class="nav-wrapper">
@@ -20,8 +20,8 @@
               </a>
               <a href="#" data-target="mobile-menu" class="sidenav-trigger"><i class="material-icons">menu</i></a>
               <ul class="right hide-on-med-and-down">
-                <li class="active workflow-selector" data-target="oidcWorkflow"><a href="#" id="wf-oidc">OIDC</a></li>
-                <li class="workflow-selector" data-target="samlWorkflow"><a href="#" id="wf-saml" >SAML</a></li>
+                <li id="wf-selector-oidc"><a href="/oidc">OIDC</a></li>
+                <li id="wf-selector-saml"><a href="/saml" id="wf-saml" >SAML</a></li>
               </ul>
             </div>
           </nav>
@@ -46,27 +46,28 @@
         </div>
       </div>
       {{end}}
+      {{if eq .Workflow "oidc"}}
       <div id="oidcWorkflow" class="container workflow">
           <div class="row">
-            <ul class="collapsible" data-current="{{.OidcData.Step}}">
+            <ul class="collapsible">
                 <li class="active">
                   <div class="collapsible-header"><i class="material-icons">settings</i>Parameters</div>
                   <div class="collapsible-body">
                       <div class="row">
-                        <form class="col s12" action="/oauth/setup" method="POST">
+                        <form class="col s12" action="/oidc/setup" method="POST">
                             <div class="row">
-                              <div class="col s12 m4" id="flowstyle" data-value="{{.OidcData.AuthFlow}}">
+                              <div class="col s12 m4">
                                 <span>Authentication Flow Style</span>
                               </div>
                               <div class="col s12 m4">
                                   <label>
-                                    <input class="with-gap" name="flow" value="code" type="radio"  />
+                                    <input class="with-gap" name="flow" value="code" type="radio" checked />
                                     <span>Authorization Code Flow</span>
                                   </label>
                               </div>
                               <div class="col s12 m4">
                                 <label>
-                                  <input class="with-gap" name="flow" value="implicit" type="radio"  />
+                                  <input class="with-gap" name="flow" value="implicit" type="radio" />
                                   <span>Implicit Flow</span>
                                 </label>
                               </div>
@@ -97,7 +98,7 @@
                                 <label for="scope">OIDC Scopes</label>
                                 <span class="helper-text">separated by spaces e.g "openid profile email"</span>
                             </div>
-                              <button class="btn waves-effect waves-light blue darken-1" type="submit" name="action">Start Flow
+                              <button class="btn waves-effect waves-light blue darken-1" type="submit">Start Flow
                                 <i class="material-icons right">send</i>
                               </button>
                             </div>
@@ -128,14 +129,23 @@
                         </div>
                       </div>
                     </div>
+                    <div class="row">
+                      <div class="col s12 m12" style="text-align:center">
+                        <button class="btn waves-effect waves-light blue darken-1" onclick="location.href='/oidc/restart'">Restart Flow
+                          <i class="material-icons right">send</i>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </li>
               </ul>
           </div>
       </div>
+      {{end}}
+      {{if eq .Workflow "saml"}}
       <div id="samlWorkflow" class="container workflow">
         <div class="row">
-          <ul class="collapsible saml" data-current="{{.SamlData.Step}}">
+          <ul class="collapsible">
             <li class="active">
               <div class="collapsible-header"><i class="material-icons">settings</i>Parameters</div>
               <div class="collapsible-body">
@@ -151,10 +161,10 @@
                       <label for="sp_meta">Service Provider Metadata URL</label>
                       <span class="helper-text">give this url to the IDP</span>
                     </div>
-                    <button class="btn waves-effect waves-light blue darken-1" type="submit" name="create">Create Service Provider
+                    <button class="btn waves-effect waves-light blue darken-1" type="submit">Create Service Provider
                       <i class="material-icons right">save</i>
                     </button>
-                    <button class="btn waves-effect waves-light blue darken-1" type="button" onclick="location.href = '/saml/callback'" name="start">Start
+                    <button class="btn waves-effect waves-light blue darken-1" type="button" onclick="location.href = '/saml/callback'">Start
                       <i class="material-icons right">send</i>
                     </button>
                   </form>
@@ -187,6 +197,7 @@
           </ul>
         </div>
       </div>
+      {{end}}
     </main>
     <footer class="page-footer white">
       <div class="footer-copyright blue darken-3">
@@ -199,38 +210,24 @@
         </div>
       </div>
     </footer>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="/static/materialize.min.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", function(){
-          M.AutoInit();
-          var flow = document.getElementById("flowstyle").dataset.value;
-          if(flow === null || flow === ""){
-            document.querySelectorAll("input[name=flow]")[0].checked = true
-          }else{
-            document.querySelector("input[value="+flow+"]").checked = true;
-          }
+          document.querySelector("#wf-selector-"+document.querySelector("body").dataset["workflow"]).classList.add("active");
+          let step = document.querySelector("body").dataset["step"];
+          let c = M.Collapsible.init(document.querySelector(".collapsible"),{});
+          c.open(step);
+          setTimeout(function(){document.querySelectorAll(".input-field").forEach(e => { if (e.querySelector("input").value != "") {e.querySelector("label").classList.add("active")} })}, 1)
       })
-      setTimeout(function(){document.querySelectorAll(".input-field").forEach(e => { if (e.querySelector("input").value != "") {e.querySelector("label").classList.add("active")} })}, 1)
-      document.querySelectorAll(".workflow-selector").forEach(el => {
-        el.addEventListener("click", function(){
-          document.querySelectorAll(".workflow").forEach(c => {c.style.display="none"})
-          document.getElementById(event.target.parentElement.dataset["target"]).style.display="block";
-          document.querySelectorAll(".workflow-selector").forEach(c => {c.classList.remove("active")})
-          event.target.parentElement.style.display="block";
-          event.target.parentElement.classList.add("active");
-          localStorage.setItem("workflow", event.target.id);
-          // Select current collapsible element
-          let collapseEl = document.getElementById(event.target.parentElement.dataset.target).querySelector(".collapsible")
-          let collapsible = M.Collapsible.init(collapseEl, {});
-          collapsible.open(collapseEl.dataset.current);
-        })
-      })
-      let currentWorkflow = localStorage.getItem("workflow");
-          if(currentWorkflow === null || currentWorkflow === ""){
-            currentWorkflow = document.querySelector(".workflow-selector.active a").id
-          }
-          document.getElementById(currentWorkflow).click();
-
     </script>
+    {{if eq .Workflow "oidc"}}
+    <script>
+      document.querySelector("#redir").value = location.href + "/callback";
+      let scopeInput = document.querySelector("#scope")
+      if (scopeInput.value === "") {scopeInput.value = "openid";}
+    </script>
+    {{end}}
+    {{if eq .Workflow "saml"}}
+    {{end}}
   </body>
 </html>
