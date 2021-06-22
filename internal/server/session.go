@@ -19,12 +19,13 @@ var Sessions SessionManager = SessionManager{
 }
 
 type Session struct {
-	Added         time.Time
+	Expires       time.Time
 	Provider      *oidc.Provider
 	Config        *oauth2.Config
 	OAuthCodeOpts []oauth2.AuthCodeOption
 	SamlMw        *samlsp.Middleware
 	State         string
+	CsrfToken     string
 }
 
 type SessionManager struct {
@@ -63,6 +64,10 @@ func (m *SessionManager) Get(hash string) *Session {
 	return nil
 }
 
+func (s *Session) Valid() bool {
+	return time.Now().Before(s.Expires)
+}
+
 func RunSessionCleanup() {
 	for {
 		if shutdown {
@@ -70,7 +75,7 @@ func RunSessionCleanup() {
 		}
 		now := time.Now()
 		for h, s := range Sessions.Items {
-			if now.After(s.Added.Add(Sessions.Lifetime)) {
+			if now.After(s.Expires) {
 				Sessions.Remove(h)
 			}
 		}

@@ -38,27 +38,18 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		renderIndex(w, r, &templateData{Error: fmt.Sprintf("Could not setup SAML Service Provider<br>%s", err)})
 		return
 	}
-	id := IDFromCookieOrNew(r)
-	s := Session{
-		Added:  time.Now(),
-		SamlMw: samlMw,
+	s := r.Context().Value(sessKey).(*Session)
+	s.Expires = time.Now().Add(Sessions.Lifetime)
+	s.SamlMw = samlMw
+	c, err := r.Cookie(string(sessKey))
+	if err != nil {
+		renderIndex(w, r, &templateData{Error: "Cookie not found"})
+		return
 	}
-	Sessions.Add(&s, id)
-	c := http.Cookie{
-		Name:     string(sessKey),
-		Value:    id,
-		Path:     "/",
-		Expires:  time.Now().Add(Sessions.Lifetime),
-		HttpOnly: true,
-		Secure:   true,
-		Domain:   r.URL.Host,
-		SameSite: http.SameSiteNoneMode,
-	}
-	http.SetCookie(w, &c)
 	http.SetCookie(w, &http.Cookie{Name: "token", MaxAge: -1, Path: "/", HttpOnly: true, Domain: r.Host})
 	renderIndex(w, r, &templateData{SamlData: samlData{
 		IDPMetadataURL: mdurl,
-		SPMetadataURL:  fmt.Sprintf("%s/%s", samlMw.ServiceProvider.MetadataURL.String(), id),
+		SPMetadataURL:  fmt.Sprintf("%s/%s", samlMw.ServiceProvider.MetadataURL.String(), c.Value),
 	}})
 }
 

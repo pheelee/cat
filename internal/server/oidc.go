@@ -63,33 +63,17 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		Endpoint:     provider.Endpoint(),
 		Scopes:       strings.Split(userInput.Scope, " "),
 	}
-
-	id := IDFromCookieOrNew(r)
-	s := &Session{
-		Added:    time.Now(),
-		Provider: provider,
-		Config:   &config,
-		State:    RandomString(16),
-	}
-	Sessions.Add(s, id)
-	c := http.Cookie{
-		Name:     string(sessKey),
-		Value:    id,
-		Path:     "/",
-		Expires:  time.Now().Add(Sessions.Lifetime),
-		HttpOnly: true,
-		Secure:   true,
-		Domain:   r.URL.Host,
-		SameSite: http.SameSiteNoneMode,
-	}
-
+	s := r.Context().Value(sessKey).(*Session)
+	s.Expires = time.Now().Add(Sessions.Lifetime)
+	s.Provider = provider
+	s.Config = &config
+	s.State = RandomString(16)
 	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_type", "code"))
 	if userInput.AuthFlow == "implicit" {
 		s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_type", "id_token token"))
 	}
 	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("nonce", s.State))
 	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_mode", "form_post"))
-	http.SetCookie(w, &c)
 	http.Redirect(w, r, config.AuthCodeURL(s.State, s.OAuthCodeOpts...), http.StatusFound)
 }
 

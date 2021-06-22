@@ -55,6 +55,7 @@
                   <div class="collapsible-body">
                       <div class="row">
                         <form class="col s12" action="/oidc/setup" method="POST">
+                          <input type="hidden" name="csrf_token" value="{{.CsrfToken}}">
                             <div class="row">
                               <div class="col s12 m4">
                                 <span>Authentication Flow Style</span>
@@ -151,6 +152,7 @@
               <div class="collapsible-body">
                 <div class="row">
                   <form class="col s12" id="samlForm" action="/saml/setup">
+                    <input type="hidden" name="csrf_token" value="{{.CsrfToken}}">
                     <div class="input-field col s12 m12">
                       <input id="metadata" name="metadata" type="text" class="validate" value="{{.SamlData.IDPMetadataURL}}">
                       <label for="metadata">Metadata URL</label>
