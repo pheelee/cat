@@ -160,7 +160,7 @@ func session(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				Domain:   r.URL.Host,
-				SameSite: http.SameSiteDefaultMode,
+				SameSite: http.SameSiteNoneMode,
 			}
 			http.SetCookie(w, &c)
 		}
@@ -185,8 +185,7 @@ func SetupRoutes(c *Config) http.Handler {
 	var fs http.Handler
 	cfg = c
 	root := mux.NewRouter()
-	root.Use(session)
-	root.Use(rateLimit.Limit)
+
 	saml := root.PathPrefix("/saml").Subrouter()
 	saml.HandleFunc("", wfSaml.index).Methods("GET")
 	saml.Handle("/callback", requireSamlSetup(wfSaml.callback)).Methods("POST", "GET")
@@ -199,6 +198,8 @@ func SetupRoutes(c *Config) http.Handler {
 		http.Redirect(w, r, "/saml/callback", http.StatusTemporaryRedirect)
 	})
 	saml.PathPrefix("/metadata/").HandlerFunc(wfSaml.metadata)
+	saml.Use(rateLimit.Limit)
+	saml.Use(session)
 	oidc := root.PathPrefix("/oidc").Subrouter()
 	oidc.HandleFunc("", wfOidc.index).Methods("GET")
 	oidc.Handle("/setup", verifyCSRF(http.HandlerFunc(wfOidc.setup))).Methods("POST")
@@ -206,6 +207,8 @@ func SetupRoutes(c *Config) http.Handler {
 	oidc.Handle("/restart", requireOidcSetup(wfOidc.restart)).Methods("GET")
 	oidc.Handle("/callback", requireOidcSetup(wfOidc.callback)).Methods("POST")
 	oidc.HandleFunc("/callback", redirectHome).Methods()
+	oidc.Use(rateLimit.Limit)
+	oidc.Use(session)
 	if cfg.StaticDir != "" {
 		fs = http.FileServer(http.Dir(cfg.StaticDir))
 	} else {
