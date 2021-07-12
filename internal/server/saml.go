@@ -28,9 +28,9 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		renderIndex(w, r, &templateData{})
 		return
 	}
-	scheme := r.URL.Scheme
+	scheme := r.Header.Get("X-Forwarded-Proto")
 	if scheme == "" {
-		scheme = r.Header.Get("X-Forwarded-Proto")
+		scheme = "http"
 	}
 
 	samlMw, err = setupSaml(cfg.Certificate, fmt.Sprintf("%s://%s", scheme, r.Host), mdurl)

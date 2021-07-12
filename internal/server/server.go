@@ -157,15 +157,19 @@ func session(next http.Handler) http.Handler {
 			}
 			id := RandomHash()
 			Sessions.Add(s, id)
+			ssite := http.SameSiteDefaultMode
+			if r.Header.Get("X-Forwarded-Proto") == "https" {
+				ssite = http.SameSiteNoneMode
+			}
 			c := http.Cookie{
 				Name:     string(sessKey),
 				Value:    id,
 				Path:     "/",
 				Expires:  time.Now().Add(Sessions.Lifetime),
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
 				Domain:   r.URL.Host,
-				SameSite: http.SameSiteNoneMode,
+				SameSite: ssite,
 			}
 			http.SetCookie(w, &c)
 		}

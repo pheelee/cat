@@ -139,12 +139,11 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wf *OidcWorkflow) callbackUrl(r *http.Request) string {
-	if r.URL.Scheme == "" {
-		if r.Header.Get("X-Forwarded-Proto") != "" {
-			r.URL.Scheme = r.Header.Get("X-Forwarded-Proto")
-		}
+	scheme := r.Header.Get("X-Forwarded-Proto")
+	if scheme == "" {
+		scheme = "http"
 	}
-	return fmt.Sprintf("%s://%s/oidc/callback", r.URL.Scheme, r.Host)
+	return fmt.Sprintf("%s://%s/oidc/callback", scheme, r.Host)
 }
 
 func PrettyToken(t string) string {
