@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
+	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -12,6 +14,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/crewjam/saml"
+	"github.com/crewjam/saml/samlsp"
+	"github.com/go-xmlfmt/xmlfmt"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/pheelee/Cat/pkg/cert"
@@ -186,29 +191,39 @@ func SetupRoutes(c *Config) http.Handler {
 	cfg = c
 	root := mux.NewRouter()
 
-	saml := root.PathPrefix("/saml").Subrouter()
-	saml.HandleFunc("", wfSaml.index).Methods("GET")
-	saml.Handle("/callback", requireSamlSetup(wfSaml.callback)).Methods("POST", "GET")
-	saml.Handle("/acs", requireSamlSetup(func(w http.ResponseWriter, r *http.Request) {
-		r.Context().Value(sessKey).(*Session).SamlMw.ServeHTTP(w, r)
+	samlRouter := root.PathPrefix("/saml").Subrouter()
+	samlRouter.HandleFunc("", wfSaml.index).Methods("GET")
+	samlRouter.Handle("/callback", requireSamlSetup(wfSaml.callback)).Methods("POST", "GET")
+	samlRouter.Handle("/acs", requireSamlSetup(func(w http.ResponseWriter, r *http.Request) {
+		// Attach our custom error handler
+		var m *samlsp.Middleware = r.Context().Value(sessKey).(*Session).SamlMw
+		m.OnError = func(w http.ResponseWriter, r *http.Request, err error) {
+			if parseErr, ok := err.(*saml.InvalidResponseError); ok {
+				renderIndex(w, r, &templateData{Error: fmt.Sprintf("<pre class='xml'>%s</pre> <br><br>Now: %s %s",
+					strings.Replace(xmlfmt.FormatXML(parseErr.Response, "", "  "), "<", "&lt;", -1), parseErr.Now, parseErr.PrivateErr)})
+			} else {
+				log.Printf("ERROR: %s", err)
+			}
+		}
+		m.ServeHTTP(w, r)
 	}))
-	saml.Handle("/setup", verifyCSRF(http.HandlerFunc(wfSaml.setup)))
-	saml.HandleFunc("/restart", func(w http.ResponseWriter, r *http.Request) {
+	samlRouter.Handle("/setup", verifyCSRF(http.HandlerFunc(wfSaml.setup)))
+	samlRouter.HandleFunc("/restart", func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "token", MaxAge: -1, Path: "/", HttpOnly: true, Domain: r.Host})
 		http.Redirect(w, r, "/saml/callback", http.StatusTemporaryRedirect)
 	})
-	saml.PathPrefix("/metadata/").HandlerFunc(wfSaml.metadata)
-	saml.Use(rateLimit.Limit)
-	saml.Use(session)
-	oidc := root.PathPrefix("/oidc").Subrouter()
-	oidc.HandleFunc("", wfOidc.index).Methods("GET")
-	oidc.Handle("/setup", verifyCSRF(http.HandlerFunc(wfOidc.setup))).Methods("POST")
-	oidc.HandleFunc("/setup", redirectHome).Methods("GET")
-	oidc.Handle("/restart", requireOidcSetup(wfOidc.restart)).Methods("GET")
-	oidc.Handle("/callback", requireOidcSetup(wfOidc.callback)).Methods("POST")
-	oidc.HandleFunc("/callback", redirectHome).Methods()
-	oidc.Use(rateLimit.Limit)
-	oidc.Use(session)
+	samlRouter.PathPrefix("/metadata/").HandlerFunc(wfSaml.metadata)
+	samlRouter.Use(rateLimit.Limit)
+	samlRouter.Use(session)
+	oidcRouter := root.PathPrefix("/oidc").Subrouter()
+	oidcRouter.HandleFunc("", wfOidc.index).Methods("GET")
+	oidcRouter.Handle("/setup", verifyCSRF(http.HandlerFunc(wfOidc.setup))).Methods("POST")
+	oidcRouter.HandleFunc("/setup", redirectHome).Methods("GET")
+	oidcRouter.Handle("/restart", requireOidcSetup(wfOidc.restart)).Methods("GET")
+	oidcRouter.Handle("/callback", requireOidcSetup(wfOidc.callback)).Methods("POST")
+	oidcRouter.HandleFunc("/callback", redirectHome).Methods()
+	oidcRouter.Use(rateLimit.Limit)
+	oidcRouter.Use(session)
 	if cfg.StaticDir != "" {
 		fs = http.FileServer(http.Dir(cfg.StaticDir))
 	} else {

@@ -48,7 +48,7 @@ main {
   font-size: 0.8rem;
 }
 
-pre {
+pre.token {
   background-color: ghostwhite;
   border: 1px solid silver;
   padding: 10px 20px;
@@ -63,3 +63,8 @@ pre {
 .json-string {
   color: olive;
   }
+
+pre.xml {
+  white-space: break-spaces;
+  word-break: break-word;
+}

@@ -114,19 +114,19 @@
                       <div class="col m12 s12">
                         <span class="token-title blue-text accent-3-text">Access Token</span>
                         <div class="row">
-                          <pre>{{.OidcData.AccessToken}}</pre>
+                          <pre class="token">{{.OidcData.AccessToken}}</pre>
                         </div>
                       </div>
                       <div class="col m12 s12">
                         <span class="token-title blue-text accent-3-text">ID Token</span>
                         <div class="row">
-                          <pre>{{.OidcData.IDToken}}</pre>
+                          <pre class="token">{{.OidcData.IDToken}}</pre>
                         </div>
                       </div>
                       <div class="col m12 s12">
                         <span class="token-title blue-text accent-3-text">Userinfo</span>
                         <div class="row">
-                          <pre>{{.OidcData.UserInfo}}</pre>
+                          <pre class="token">{{.OidcData.UserInfo}}</pre>
                         </div>
                       </div>
                     </div>
@@ -184,7 +184,7 @@
                 <div class="row">
                   <div class="col m12 s12">
                     <div class="row">
-                      <pre>{{.SamlData.Token}}</pre>
+                      <pre class="token">{{.SamlData.Token}}</pre>
                     </div>
                   </div>
                 </div>
@@ -222,7 +222,7 @@
           c.open(step);
           setTimeout(function(){document.querySelectorAll(".input-field").forEach(e => { if (e.querySelector("input").value != "") {e.querySelector("label").classList.add("active")} })}, 1)
       })
-      document.querySelectorAll("pre").forEach(e => {
+      document.querySelectorAll("pre.token").forEach(e => {
         if (e.innerText !== "") {
           e.innerHTML = token.json.prettyPrint(JSON.parse(e.innerText));
         }
