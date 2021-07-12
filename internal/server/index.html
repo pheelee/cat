@@ -230,7 +230,7 @@
     </script>
     {{if eq .Workflow "oidc"}}
     <script>
-      document.querySelector("#redir").value = location.href + "/callback";
+      document.querySelector("#redir").value = location.href.endsWith("/callback") ? location.href : location.href + "/callback";
       let scopeInput = document.querySelector("#scope")
       if (scopeInput.value === "") {scopeInput.value = "openid";}
     </script>
