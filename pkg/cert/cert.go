@@ -48,6 +48,7 @@ func Generate(name string, org string, country string, ou string, expires string
 		NotAfter:              time.Now().Add(expire),
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		BasicConstraintsValid: true,
+		SignatureAlgorithm:    x509.SHA256WithRSA,
 	}
 	cert, err := x509.CreateCertificate(rand.Reader, &template, &template, priv.Public(), priv)
 	if err != nil {
