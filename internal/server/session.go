@@ -24,6 +24,7 @@ type Session struct {
 	Config        *oauth2.Config
 	OAuthCodeOpts []oauth2.AuthCodeOption
 	SamlMw        *samlsp.Middleware
+	SamlOpts      SamlOpts
 	State         string
 	CsrfToken     string
 }

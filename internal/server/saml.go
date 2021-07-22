@@ -3,17 +3,41 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
 	"time"
 
+	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
 	"github.com/pheelee/Cat/pkg/cert"
 )
 
-type SamlWorkflow struct{}
+type SamlWorkflow struct {
+}
+
+type SamlOpts struct {
+	MetadataURL             string
+	SignRequest             bool
+	SignAlgorithm           string
+	NameIDFormat            string
+	NoEncryptionCertificate bool
+	AllowIDPInitiated       bool
+}
+
+func (wf *SamlWorkflow) parseOpts(r *http.Request) SamlOpts {
+	r.ParseForm()
+	return SamlOpts{
+		MetadataURL:             r.FormValue("metadata"),
+		SignRequest:             r.FormValue("signRequest") == "on",
+		SignAlgorithm:           r.FormValue("sigAlg"),
+		NameIDFormat:            r.FormValue("nameIDFormat"),
+		NoEncryptionCertificate: r.FormValue("NoEncryptionCertificate") == "on",
+		AllowIDPInitiated:       r.FormValue("AllowIDPInitiated") == "on",
+	}
+}
 
 func (wf *SamlWorkflow) index(w http.ResponseWriter, r *http.Request) {
 	renderIndex(w, r, &templateData{Workflow: "saml"})
@@ -22,9 +46,8 @@ func (wf *SamlWorkflow) index(w http.ResponseWriter, r *http.Request) {
 func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 	var samlMw *samlsp.Middleware
 	var err error
-	r.ParseForm()
-	mdurl := r.Form.Get("metadata")
-	if mdurl == "" {
+	o := wf.parseOpts(r)
+	if o.MetadataURL == "" {
 		renderIndex(w, r, &templateData{})
 		return
 	}
@@ -33,12 +56,13 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		scheme = "http"
 	}
 
-	samlMw, err = setupSaml(cfg.Certificate, fmt.Sprintf("%s://%s", scheme, r.Host), mdurl)
+	samlMw, err = setupSaml(cfg.Certificate, fmt.Sprintf("%s://%s", scheme, r.Host), o)
 	if err != nil {
 		renderIndex(w, r, &templateData{Error: fmt.Sprintf("Could not setup SAML Service Provider<br>%s", err)})
 		return
 	}
 	s := r.Context().Value(sessKey).(*Session)
+	s.SamlOpts = o
 	s.Expires = time.Now().Add(Sessions.Lifetime)
 	s.SamlMw = samlMw
 	c, err := r.Cookie(string(sessKey))
@@ -48,18 +72,18 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: "token", MaxAge: -1, Path: "/", HttpOnly: true, Domain: r.Host})
 	renderIndex(w, r, &templateData{SamlData: samlData{
-		IDPMetadataURL: mdurl,
+		IDPMetadataURL: o.MetadataURL,
 		SPMetadataURL:  fmt.Sprintf("%s/%s", samlMw.ServiceProvider.MetadataURL.String(), c.Value),
 	}})
 }
 
-func setupSaml(cert *cert.Certificate, rootUrl string, metadataUrl string) (*samlsp.Middleware, error) {
+func setupSaml(cert *cert.Certificate, rootUrl string, o SamlOpts) (*samlsp.Middleware, error) {
 	url, err := url.Parse(rootUrl)
 	if err != nil {
 		return nil, fmt.Errorf("setupSaml - parse root url - %s", err)
 	}
 	// Fetch Metadata
-	idpMd, err := url.Parse(metadataUrl)
+	idpMd, err := url.Parse(o.MetadataURL)
 	if err != nil {
 		return nil, fmt.Errorf("setupSaml - parse metadata url - %s", err)
 	}
@@ -68,11 +92,16 @@ func setupSaml(cert *cert.Certificate, rootUrl string, metadataUrl string) (*sam
 		return nil, fmt.Errorf("setupSaml - idp fetch metadata - %s", err)
 	}
 	sp, err := samlsp.New(samlsp.Options{
-		URL:         *url,
-		Key:         cert.PrivteKey,
-		Certificate: cert.Cert,
-		IDPMetadata: meta,
+		URL:                *url,
+		Key:                cert.PrivteKey,
+		Certificate:        cert.Cert,
+		IDPMetadata:        meta,
+		SignRequest:        o.SignRequest,
+		AllowIDPInitiated:  o.AllowIDPInitiated,
+		DefaultRedirectURI: "/saml/callback",
 	})
+	sp.ServiceProvider.AuthnNameIDFormat = saml.NameIDFormat(o.NameIDFormat)
+	sp.ServiceProvider.SignatureMethod = o.SignAlgorithm
 
 	if err != nil {
 		return nil, fmt.Errorf("setupSaml - samlSp.new - %s", err)
@@ -91,7 +120,21 @@ func (wf *SamlWorkflow) metadata(w http.ResponseWriter, r *http.Request) {
 			renderIndex(w, r, &templateData{Error: "Session not found"})
 			return
 		}
-		s.SamlMw.ServeHTTP(w, r)
+		d := s.SamlMw.ServiceProvider.Metadata()
+		if s.SamlOpts.NoEncryptionCertificate {
+			for i, s := range d.SPSSODescriptors {
+				var kd []saml.KeyDescriptor
+				for _, p := range s.SSODescriptor.RoleDescriptor.KeyDescriptors {
+					if p.Use != "encryption" {
+						kd = append(kd, p)
+					}
+				}
+				d.SPSSODescriptors[i].SSODescriptor.RoleDescriptor.KeyDescriptors = kd
+			}
+		}
+		buf, _ := xml.MarshalIndent(d, "", "  ")
+		w.Header().Set("Content-Type", "application/samlmetadata+xml")
+		w.Write(buf)
 		return
 
 	}
