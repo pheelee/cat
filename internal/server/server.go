@@ -19,6 +19,7 @@ import (
 	"github.com/go-xmlfmt/xmlfmt"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/grantae/certinfo"
 	"github.com/pheelee/Cat/pkg/cert"
 	"github.com/pheelee/Cat/pkg/rlimit"
 )
@@ -69,6 +70,8 @@ type samlData struct {
 	IDPMetadataURL string
 	SPMetadataURL  string
 	Token          string
+	Certificate    string
+	CertRaw        string
 }
 
 func RandomString(n int) string {
@@ -108,6 +111,14 @@ func renderIndex(w http.ResponseWriter, r *http.Request, d *templateData) {
 	}
 	s := r.Context().Value(sessKey).(*Session)
 	s.CsrfToken = d.CsrfToken
+	c, err := certinfo.CertificateText(cfg.Certificate.Cert)
+	if err != nil {
+		d.SamlData.Certificate = err.Error()
+	} else {
+		d.SamlData.Certificate = c
+	}
+	d.SamlData.CertRaw = string(cfg.Certificate.CertPEM)
+
 	w.Header().Set("X-Frame-Options", "deny")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")

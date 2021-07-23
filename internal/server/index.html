@@ -155,7 +155,7 @@
                     <div class="switch">
                       <label>
                         Basic Mode
-                        <input type="checkbox" class="toggler persist" name="toggler" data-target="saml-expertMode" value="off">
+                        <input type="checkbox" class="toggler persist" name="toggler" data-target="saml-expertMode,certificate" value="off">
                         <span class="lever"></span>
                         Expert Mode
                       </label>
@@ -238,6 +238,19 @@
                   </div>
                 </div>
             </li>
+            <li id="certificate" class="hidden">
+              <div class="collapsible-header"><i class="material-icons">lock</i>Certificate</div>
+              <div class="collapsible-body">
+                <span class="token-title blue-text accent-3-text">Certificate</span>
+                <div class="row">
+                  <pre>{{.SamlData.Certificate}}</pre>
+                </div>
+                <span class="token-title blue-text accent-3-text">Raw</span>
+                <div class="row">
+                  <pre>{{.SamlData.CertRaw}}</pre>
+                </div>
+              </div>
+            </li>
           </ul>
         </div>
       </div>
@@ -274,7 +287,9 @@
       })
       document.querySelectorAll(".toggler").forEach(e=>{
         e.addEventListener("change", function(t){
-          document.querySelector("#"+t.target.dataset.target).classList.toggle("hidden");
+          t.target.dataset.target.split(",").forEach(i => {
+            document.querySelector("#"+i).classList.toggle("hidden");
+          })
         })
       })
       document.querySelector("form").addEventListener("submit", function(e){

@@ -66,7 +66,7 @@ pre.token, pre.xml {
   word-break: break-word;
 }
 
-pre.token {
+pre {
   background-color: ghostwhite;
   border: 1px solid silver;
   padding: 10px 20px;

@@ -8,6 +8,7 @@ require (
 	github.com/go-xmlfmt/xmlfmt v0.0.0-20191208150333-d5b6f63a941b
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
+	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
