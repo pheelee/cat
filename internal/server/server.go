@@ -67,11 +67,17 @@ type oidcData struct {
 }
 
 type samlData struct {
-	IDPMetadataURL string
-	SPMetadataURL  string
-	Token          string
-	Certificate    string
-	CertRaw        string
+	IDPMetadataURL    string
+	SPMetadataURL     string
+	Token             string
+	Certificate       string
+	CertRaw           string
+	SetupInstructions []setupInstruction
+}
+
+type setupInstruction struct {
+	Title   string
+	Content string
 }
 
 func RandomString(n int) string {

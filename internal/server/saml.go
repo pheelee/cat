@@ -70,11 +70,20 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		renderIndex(w, r, &templateData{Error: "Cookie not found"})
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "token", MaxAge: -1, Path: "/", HttpOnly: true, Domain: r.Host})
-	renderIndex(w, r, &templateData{SamlData: samlData{
+	d := samlData{
 		IDPMetadataURL: o.MetadataURL,
 		SPMetadataURL:  fmt.Sprintf("%s/%s", samlMw.ServiceProvider.MetadataURL.String(), c.Value),
-	}})
+		SetupInstructions: []setupInstruction{{
+			Title: "AzureAD config with Powershell",
+			Content: fmt.Sprintf(`$app = New-AzureADApplication -DisplayName "Cat-saml" -IdentifierUris "%s" -SamlMetadataUrl "%s" -ReplyUrls "%s";New-AzureADServicePrincipal -DisplayName "Cat-saml" -AccountEnabled $true -AppId $app.AppId -AppRoleAssignmentRequired $false  -Tags "WindowsAzureActiveDirectoryIntegratedApp","WindowsAzureActiveDirectoryCustomSingleSignOnApplication"`,
+				samlMw.ServiceProvider.MetadataURL.String(),
+				fmt.Sprintf("%s/%s", samlMw.ServiceProvider.MetadataURL.String(), c.Value),
+				samlMw.ServiceProvider.AcsURL.String(),
+			),
+		}},
+	}
+	http.SetCookie(w, &http.Cookie{Name: "token", MaxAge: -1, Path: "/", HttpOnly: true, Domain: r.Host})
+	renderIndex(w, r, &templateData{SamlData: d})
 }
 
 func setupSaml(cert *cert.Certificate, rootUrl string, o SamlOpts) (*samlsp.Middleware, error) {

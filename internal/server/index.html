@@ -217,6 +217,14 @@
                       <p class="note">NameID Format must be <b><span id="nameid">urn:oasis:names:tc:SAML:2.0:nameid-format:transient</span></b></p>
                     </div>
                   </div>
+                  <div class="row">
+                    {{range .SamlData.SetupInstructions}}
+                    <div class="col s12">
+                      <div class="setupinstruction-title">{{.Title}}</div>
+                      <pre class="setupinstruction-content">{{.Content}}</pre>
+                    </div>
+                    {{end}}
+                  </div>
                 </div>
               </div>
             </li>
