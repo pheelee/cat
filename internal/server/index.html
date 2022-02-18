@@ -57,20 +57,34 @@
                         <form class="col s12" action="/oidc/setup" method="POST">
                           <input type="hidden" name="csrf_token" value="{{.CsrfToken}}">
                             <div class="row">
-                              <div class="col s12 m4">
-                                <span>Authentication Flow Style</span>
+                              <div class="col s12 m3">
+                                <span>Response type</span>
                               </div>
-                              <div class="col s12 m4">
-                                  <label>
-                                    <input class="with-gap persist" name="flow" value="code" type="radio" checked />
-                                    <span>Authorization Code Flow</span>
-                                  </label>
-                              </div>
-                              <div class="col s12 m4">
+                              <div class="col s12 m3">
                                 <label>
-                                  <input class="with-gap persist" name="flow" value="implicit" type="radio" />
-                                  <span>Implicit Flow</span>
+                                  <input type="checkbox" class="filled-in response-type-selector persist" checked="checked" name="code" />
+                                  <span>code</span>
                                 </label>
+                              </div>
+                              <div class="col s12 m3">
+                                <label>
+                                  <input type="checkbox" class="filled-in response-type-selector persist" name="token" />
+                                  <span>token</span>
+                                </label>
+                              </div>
+                              <div class="col s12 m3">
+                                <label>
+                                  <input type="checkbox" class="filled-in response-type-selector persist" name="id_token" />
+                                  <span>id_token</span>
+                                </label>
+                              </div>
+                            </div>
+                            <div class="row response-type">
+                              <div class="title">
+                                Authorization code flow
+                              </div>
+                              <div class="description">
+                                The IdP responds with a code which can be exchanged for tokens
                               </div>
                             </div>
                             <div class="row">
@@ -312,6 +326,32 @@
         document.querySelector("#redir").value = location.href.endsWith("/callback") ? location.href : location.href + "/callback";
         let scopeInput = document.querySelector("#scope")
         if (scopeInput.value === "") {scopeInput.value = "openid";}
+        document.querySelectorAll(".response-type-selector").forEach(e => {
+          e.addEventListener("change", function(){
+            evalFlowStyle();
+          })
+        })
+        evalFlowStyle();
+      }
+      function evalFlowStyle(){
+        let code = document.querySelector(".response-type-selector[name='code']").checked;
+        let token = document.querySelector(".response-type-selector[name='token']").checked;
+        let id_token = document.querySelector(".response-type-selector[name='id_token']").checked;
+        if(code && !token && !id_token) {
+          document.querySelector(".response-type .title").innerHTML = "Authorization code flow"
+          document.querySelector(".response-type .description").innerHTML = "The IdP responds with a code which can be exchanged for tokens. This is the most secure flow"
+          document.querySelector("form button[type='submit']").disabled = false;
+        }else if(code && (token || id_token)){
+          document.querySelector(".response-type .title").innerHTML = "Hybrid flow"
+          document.querySelector(".response-type .description").innerHTML = "The IdP responds with both a code (which can be exchanged for tokens) and a token"
+          document.querySelector("form button[type='submit']").disabled = false;
+        }else if(!code && token || id_token){
+          document.querySelector(".response-type .title").innerHTML = "Implicit flow"
+          document.querySelector(".response-type .description").innerHTML = "The IdP responds with an access and/or ID token. This is common for single-page-applications or application which directly need a token"
+          document.querySelector("form button[type='submit']").disabled = false;
+        }else{
+          document.querySelector("form button[type='submit']").disabled = true;
+        }
       }
     </script>
     {{end}}

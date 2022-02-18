@@ -88,3 +88,19 @@ color: olive;
   font-size: 1rem;
   font-weight:500;
 }
+
+.response-type{
+  border: 1pt solid #eee;
+  text-align: center;
+  padding-bottom: 0.5rem;
+}
+
+.response-type .title {
+  background-color:#bbdefb;
+  font-weight:500;
+  padding: 0.5rem;
+}
+
+.response-type .description {
+  padding:1rem;
+}

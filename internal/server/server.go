@@ -63,7 +63,7 @@ type oidcData struct {
 	AccessToken  string
 	IDToken      string
 	UserInfo     string
-	AuthFlow     string
+	ResponseType string
 }
 
 type samlData struct {

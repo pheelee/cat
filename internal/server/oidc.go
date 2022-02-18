@@ -22,14 +22,22 @@ func (wf *OidcWorkflow) index(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wf *OidcWorkflow) parseInput(u url.Values) *oidcData {
-	return &oidcData{
+	d := &oidcData{
 		ProviderURL:  template.HTMLEscapeString(u.Get("provider")),
 		RedirectURL:  template.HTMLEscapeString(u.Get("redir")),
 		AppID:        template.HTMLEscapeString(u.Get("app")),
 		ClientSecret: template.HTMLEscapeString(u.Get("secret")),
 		Scope:        template.HTMLEscapeString(u.Get("scope")),
-		AuthFlow:     template.HTMLEscapeString(u.Get("flow")),
 	}
+	responseType := []string{}
+	for _, r := range []string{"code", "token", "id_token"} {
+		v := template.HTMLEscapeString(u.Get(r))
+		if v == "on" {
+			responseType = append(responseType, r)
+		}
+	}
+	d.ResponseType = strings.Join(responseType, " ")
+	return d
 }
 
 func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
@@ -68,10 +76,7 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 	s.Provider = provider
 	s.Config = &config
 	s.State = RandomString(16)
-	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_type", "code"))
-	if userInput.AuthFlow == "implicit" {
-		s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_type", "id_token token"))
-	}
+	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_type", userInput.ResponseType))
 	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("nonce", s.State))
 	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_mode", "form_post"))
 	http.Redirect(w, r, config.AuthCodeURL(s.State, s.OAuthCodeOpts...), http.StatusFound)
@@ -134,7 +139,10 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 	if raw_access != "" && strings.Contains(raw_access, ".") {
 		data.AccessToken = PrettyToken(strings.Split(raw_access, ".")[1])
 	}
-	data.IDToken = PrettyToken(strings.Split(raw_id, ".")[1])
+	if raw_id != "" {
+		data.IDToken = PrettyToken(strings.Split(raw_id, ".")[1])
+	}
+
 	b, _ := json.MarshalIndent(userinfo, "", "    ")
 	data.UserInfo = string(b)
 	renderIndex(w, r, &templateData{OidcData: data})
