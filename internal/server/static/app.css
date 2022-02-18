@@ -30,6 +30,7 @@ main {
 
 .page-footer {
   position: fixed;
+  z-index: 1001;
   bottom: 0px;
   width: 100%;
   display: flex;
@@ -67,6 +68,7 @@ pre.token, pre.xml {
 }
 
 pre {
+  color: #000000;
   background-color: ghostwhite;
   border: 1px solid silver;
   padding: 10px 20px;
