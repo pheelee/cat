@@ -24,7 +24,7 @@ if (!token)
 
 var Form = Form || {
    data: {},
-   Save: function(el = document.querySelectorAll("input"), key = "Form") {
+   Save: function(el = document.querySelectorAll(".persist"), key = "Form") {
       el.forEach(e => {
          if(e.name != null || e.name != ""){
             let d = this.data[e.name] = {type: e.nodeName};
@@ -50,13 +50,16 @@ var Form = Form || {
                   d.value = e.selectedIndex;
                   break;
                }
+               case "TEXTAREA":{
+                  d.value = e.value;
+               }
             }
          }
       })
       localStorage.setItem(key, JSON.stringify(this.data));
    },
 
-   Load: function(el = document.querySelectorAll("input"), key = "Form") {
+   Load: function(el = document.querySelectorAll(".persist"), key = "Form") {
       let d = JSON.parse(localStorage.getItem(key));
       if(d === null){return;}
       for(e of el){
@@ -89,6 +92,9 @@ var Form = Form || {
                      M.FormSelect.init(e, {});
                   }
                   break;
+               }
+               case "TEXTAREA": {
+                  e.value = d[e.name].value;
                }
             }
          }

@@ -185,6 +185,10 @@
                         <label for="metadata">IdP Metadata URL</label>
                         <span class="helper-text"></span>
                       </div>
+                      <div class="input-field col s12">
+                        <textarea id="metadatafile" class="materialize-textarea persist" name="metadatafile"></textarea>
+                        <label for="metadatafile">Metadata</label>
+                      </div>
                       <div class="input-field col s12 m12">
                         <input id="sp_meta" name="sp_meta" type="text" class="validate" disabled value="{{.SamlData.SPMetadataURL}}">
                         <label for="sp_meta">Service Provider Metadata URL</label>
@@ -297,7 +301,13 @@
           let step = document.querySelector("body").dataset["step"];
           let c = M.Collapsible.init(document.querySelector(".collapsible"),{});
           c.open(step);
-          setTimeout(function(){document.querySelectorAll(".input-field").forEach(e => { if (e.querySelector("input").value != "") {e.querySelector("label").classList.add("active")} })}, 1)
+          setTimeout(function(){document.querySelectorAll(".input-field").forEach(e => { 
+            let el = e.querySelector("input");
+            if (el == null){
+              el = e.querySelector("textarea");
+            }
+            if (el.value != "") 
+            {e.querySelector("label").classList.add("active")} })}, 1)
           M.FormSelect.init(document.querySelectorAll("select"), {});
           Form.Load(document.querySelectorAll(".persist"),"Form-"+document.querySelector("body").dataset["workflow"]);
           init(); // the saml/oidc specific js parts

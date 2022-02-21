@@ -20,6 +20,7 @@ type SamlWorkflow struct {
 
 type SamlOpts struct {
 	MetadataURL             string
+	MetadataFile            []byte
 	SignRequest             bool
 	SignAlgorithm           string
 	NameIDFormat            string
@@ -30,6 +31,7 @@ type SamlOpts struct {
 func (wf *SamlWorkflow) parseOpts(r *http.Request) SamlOpts {
 	r.ParseForm()
 	return SamlOpts{
+		MetadataFile:            []byte(r.FormValue("metadatafile")),
 		MetadataURL:             r.FormValue("metadata"),
 		SignRequest:             r.FormValue("signRequest") == "on",
 		SignAlgorithm:           r.FormValue("sigAlg"),
@@ -47,7 +49,7 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 	var samlMw *samlsp.Middleware
 	var err error
 	o := wf.parseOpts(r)
-	if o.MetadataURL == "" {
+	if len(o.MetadataURL) == 0 && len(o.MetadataFile) == 0 {
 		renderIndex(w, r, &templateData{})
 		return
 	}
@@ -91,15 +93,24 @@ func setupSaml(cert *cert.Certificate, rootUrl string, o SamlOpts) (*samlsp.Midd
 	if err != nil {
 		return nil, fmt.Errorf("setupSaml - parse root url - %s", err)
 	}
-	// Fetch Metadata
-	idpMd, err := url.Parse(o.MetadataURL)
-	if err != nil {
-		return nil, fmt.Errorf("setupSaml - parse metadata url - %s", err)
+	// Fetch Metadata or parse uploaded file
+	var meta *saml.EntityDescriptor
+	if o.MetadataURL != "" {
+		idpMd, err := url.Parse(o.MetadataURL)
+		if err != nil {
+			return nil, fmt.Errorf("setupSaml - parse metadata url - %s", err)
+		}
+		meta, err = samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMd)
+		if err != nil {
+			return nil, fmt.Errorf("setupSaml - idp fetch metadata - %s", err)
+		}
+	} else {
+		meta, err = samlsp.ParseMetadata(o.MetadataFile)
+		if err != nil {
+			return nil, fmt.Errorf("setupSaml - idp parse metadata - %s", err)
+		}
 	}
-	meta, err := samlsp.FetchMetadata(context.Background(), http.DefaultClient, *idpMd)
-	if err != nil {
-		return nil, fmt.Errorf("setupSaml - idp fetch metadata - %s", err)
-	}
+
 	sp, err := samlsp.New(samlsp.Options{
 		URL:                *url,
 		Key:                cert.PrivteKey,

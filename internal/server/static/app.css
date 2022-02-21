@@ -104,3 +104,8 @@ color: olive;
 .response-type .description {
   padding:1rem;
 }
+
+textarea {
+  height:300px !important;
+  overflow-y: scroll !important;
+}
