@@ -64,6 +64,7 @@ type oidcData struct {
 	IDToken      string
 	UserInfo     string
 	ResponseType string
+	PKCE         bool
 }
 
 type samlData struct {

@@ -88,6 +88,14 @@
                               </div>
                             </div>
                             <div class="row">
+                              <div class="col s12">
+                                <label>
+                                  <input type="checkbox" class="filled-in persist" name="pkce" />
+                                  <span>Use PKCE</span>
+                                </label>
+                              </div>
+                            </div>
+                            <div class="row">
                               <div class="input-field col s12 m6">
                                 <input id="provider" name="provider" type="text" class="validate persist" value="{{.OidcData.ProviderURL}}">
                                 <label for="provider">Provider URL</label>

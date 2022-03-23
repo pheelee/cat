@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	mrand "math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -28,6 +30,7 @@ func (wf *OidcWorkflow) parseInput(u url.Values) *oidcData {
 		AppID:        template.HTMLEscapeString(u.Get("app")),
 		ClientSecret: template.HTMLEscapeString(u.Get("secret")),
 		Scope:        template.HTMLEscapeString(u.Get("scope")),
+		PKCE:         u.Get("pkce") == "on",
 	}
 	responseType := []string{}
 	for _, r := range []string{"code", "token", "id_token"} {
@@ -76,6 +79,14 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 	s.Provider = provider
 	s.Config = &config
 	s.State = RandomString(16)
+	if userInput.PKCE {
+		s.OIDCVerifier = NewVerifier(128)
+		s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("code_challenge", s.OIDCVerifier.CodeSHA256Challenge()))
+		s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("code_challenge_method", "S256"))
+	} else {
+		s.OIDCVerifier = nil
+		s.OAuthCodeOpts = []oauth2.AuthCodeOption{}
+	}
 	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_type", userInput.ResponseType))
 	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("nonce", s.State))
 	s.OAuthCodeOpts = append(s.OAuthCodeOpts, oauth2.SetAuthURLParam("response_mode", "form_post"))
@@ -117,7 +128,11 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 	var raw_id, raw_access string
 	var userinfo *oidc.UserInfo
 	if code != "" {
-		t, err := s.Config.Exchange(context.Background(), code)
+		opts := []oauth2.AuthCodeOption{}
+		if s.OIDCVerifier != nil {
+			opts = append(opts, oauth2.SetAuthURLParam("code_verifier", s.OIDCVerifier.Value))
+		}
+		t, err := s.Config.Exchange(context.Background(), code, opts...)
 		if err != nil {
 			renderIndex(w, r, &templateData{Error: err.Error()})
 			return
@@ -168,4 +183,41 @@ func PrettyToken(t string) string {
 	}
 	b, _ = json.MarshalIndent(o, "", "    ")
 	return string(b)
+}
+
+type Verifier struct {
+	Value string
+}
+
+func (v Verifier) CodeSHA256Challenge() string {
+	h := sha256.New()
+	h.Write([]byte(v.Value))
+	return base64UrlEncode(h.Sum(nil))
+}
+
+func base64UrlEncode(b []byte) string {
+	encoded := base64.StdEncoding.EncodeToString(b)
+	encoded = strings.Replace(encoded, "+", "-", -1)
+	encoded = strings.Replace(encoded, "/", "_", -1)
+	encoded = strings.Replace(encoded, "=", "", -1)
+	return encoded
+}
+
+func NewVerifier(length int) *Verifier {
+	upperChars := []rune{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'}
+	lowerChars := []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'M', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
+	specialChars := []rune{'-', ',', '_', '~'}
+	chars := upperChars
+	chars = append(chars, lowerChars...)
+	chars = append(chars, specialChars...)
+
+	b := make([]byte, length)
+	m := mrand.New(mrand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < length; i++ {
+		b[i] = byte(chars[m.Intn(len(chars))])
+	}
+
+	return &Verifier{
+		Value: base64UrlEncode(b),
+	}
 }

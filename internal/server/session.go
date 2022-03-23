@@ -22,6 +22,7 @@ type Session struct {
 	Expires       time.Time
 	Provider      *oidc.Provider
 	Config        *oauth2.Config
+	OIDCVerifier  *Verifier
 	OAuthCodeOpts []oauth2.AuthCodeOption
 	SamlMw        *samlsp.Middleware
 	SamlOpts      SamlOpts
