@@ -6,12 +6,12 @@ steps:
 - name: publish-image
   image: plugins/docker
   settings:
-    repo: cr.irbe.ch/pheelee/cat
+    repo: ghcr.io/pheelee/cat
     username:
-      from_secret: docker_username
+      from_secret: ghcr_user
     password:
-      from_secret: docker_password
-    registry: cr.irbe.ch
+      from_secret: ghcr_token
+    registry: ghcr.io
     tags: latest
 - name: deploy
   image: appleboy/drone-ssh
