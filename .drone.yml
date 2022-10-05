@@ -2,6 +2,11 @@ kind: pipeline
 name: build
 platform:
   arch: amd64
+trigger:
+  branch:
+  - master
+  event:
+  - push
 steps:
 - name: publish-image
   image: plugins/docker
@@ -13,11 +18,16 @@ steps:
       from_secret: ghcr_token
     registry: ghcr.io
     tags: latest
-trigger:
-  branch:
-  - master
-  event:
-  - push
+- name: deploy
+  image: plugins/webhook
+  environment:
+    DEPLOY_API_TOKEN:
+      from_secret: DEPLOY_API_TOKEN
+  settings:
+    urls: https://deploy.irbe.ch/v1/update
+    method: GET
+    headers:
+      Authorization: "Bearer $DEPLOY_API_TOKEN"
 ---
 kind: pipeline
 name: artifacts
@@ -44,23 +54,3 @@ steps:
 trigger:
   event:
   - tag
----
-kind: pipeline
-type: docker
-name: deploy
-trigger:
-  event:
-  - promote
-  target:
-  - production
-steps:
-- name: deploy
-  image: plugins/webhook
-  environment:
-    DEPLOY_API_TOKEN:
-      from_secret: DEPLOY_API_TOKEN
-  settings:
-    urls: https://deploy.irbe.ch/v1/update
-    method: GET
-    headers:
-      Authorization: "Bearer $DEPLOY_API_TOKEN"
