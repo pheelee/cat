@@ -27,8 +27,7 @@ steps:
     urls: https://deploy.irbe.ch/v1/update
     method: GET
     headers:
-      - "Authorization=Bearer ${DEPLOY_API_TOKEN}"
-    debug: true
+      - "Authorization=Bearer $$DEPLOY_API_TOKEN"
 ---
 kind: pipeline
 name: artifacts
