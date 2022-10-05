@@ -20,9 +20,9 @@ steps:
     tags: latest
 - name: deploy
   image: plugins/webhook
-  secrets:
-    - source: DEPLOY_API_TOKEN
-      target: webhook_token-value
+  environment:
+    WEBHOOK_TOKEN_VALUE:
+      from_secret: DEPLOY_API_TOKEN
   settings:
     urls: https://deploy.irbe.ch/v1/update
     method: GET
