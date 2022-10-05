@@ -22,7 +22,7 @@ steps:
   image: plugins/webhook
   secrets:
     - source: DEPLOY_API_TOKEN
-      target: webhook_password
+      target: webhook_token-value
   settings:
     urls: https://deploy.irbe.ch/v1/update
     method: GET
