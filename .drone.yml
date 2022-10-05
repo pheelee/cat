@@ -20,12 +20,13 @@ steps:
     tags: latest
 - name: deploy
   image: plugins/webhook
+  secrets:
+    - source: DEPLOY_API_TOKEN
+      target: webhook_password
   settings:
     urls: https://deploy.irbe.ch/v1/update
     method: GET
     debug: true
-    token-value:
-      from_secret: DEPLOY_API_TOKEN
 ---
 kind: pipeline
 name: artifacts
