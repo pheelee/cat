@@ -23,6 +23,7 @@ steps:
   settings:
     urls: https://deploy.irbe.ch/v1/update
     method: GET
+    debug: true
     token-value:
       from_secret: DEPLOY_API_TOKEN
 ---
