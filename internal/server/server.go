@@ -9,16 +9,15 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"os"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-xmlfmt/xmlfmt"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	"github.com/grantae/certinfo"
 	"github.com/pheelee/Cat/pkg/cert"
 	"github.com/pheelee/Cat/pkg/rlimit"
@@ -197,62 +196,58 @@ func session(next http.Handler) http.Handler {
 	})
 }
 
-func proxyRemoteAddr(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		a := r.Header.Get("X-FORWARDED-FOR")
-		if a != "" {
-			p := strings.Split(a, " ")
-			r.RemoteAddr = p[len(p)-1]
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func SetupRoutes(c *Config) http.Handler {
 	go RunSessionCleanup()
 	rateLimit = rlimit.New(5, time.Second*5)
 	var fs http.Handler
 	cfg = c
-	root := mux.NewRouter()
-
-	samlRouter := root.PathPrefix("/saml").Subrouter()
-	samlRouter.HandleFunc("", wfSaml.index).Methods("GET")
-	samlRouter.Handle("/callback", requireSamlSetup(wfSaml.callback)).Methods("POST", "GET")
-	samlRouter.Handle("/acs", requireSamlSetup(func(w http.ResponseWriter, r *http.Request) {
-		// Attach our custom error handler
-		var m *samlsp.Middleware = r.Context().Value(sessKey).(*Session).SamlMw
-		m.OnError = func(w http.ResponseWriter, r *http.Request, err error) {
-			if parseErr, ok := err.(*saml.InvalidResponseError); ok {
-				renderIndex(w, r, &templateData{Error: fmt.Sprintf("<pre class='xml'>%s</pre> <br><br>Now: %s %s",
-					strings.Replace(xmlfmt.FormatXML(parseErr.Response, "", "  "), "<", "&lt;", -1), parseErr.Now, parseErr.PrivateErr)})
-			} else {
-				log.Printf("ERROR: %s", err)
+	root := chi.NewRouter()
+	root.Use(middleware.RealIP)
+	root.Use(middleware.Logger)
+	root.Use(middleware.Recoverer)
+	root.Route("/saml", func(r chi.Router) {
+		r.Use(rateLimit.Limit)
+		r.Use(session)
+		r.Get("/", wfSaml.index)
+		r.Get("/callback", requireSamlSetup(wfSaml.callback).ServeHTTP)
+		r.Post("/callback", requireSamlSetup(wfSaml.callback).ServeHTTP)
+		r.Handle("/acs", requireSamlSetup(func(w http.ResponseWriter, r *http.Request) {
+			// Attach our custom error handler
+			var m *samlsp.Middleware = r.Context().Value(sessKey).(*Session).SamlMw
+			m.OnError = func(w http.ResponseWriter, r *http.Request, err error) {
+				if parseErr, ok := err.(*saml.InvalidResponseError); ok {
+					renderIndex(w, r, &templateData{Error: fmt.Sprintf("<pre class='xml'>%s</pre> <br><br>Now: %s %s",
+						strings.Replace(xmlfmt.FormatXML(parseErr.Response, "", "  "), "<", "&lt;", -1), parseErr.Now, parseErr.PrivateErr)})
+				} else {
+					log.Printf("ERROR: %s", err)
+				}
 			}
-		}
-		m.ServeHTTP(w, r)
-	}))
-	samlRouter.Handle("/slo", requireSamlSetup(func(w http.ResponseWriter, r *http.Request) {
-		//TODO: does this work for idp initiated single logout where no session is available?
-		var m *samlsp.Middleware = r.Context().Value(sessKey).(*Session).SamlMw
-		m.ServeHTTP(w, r)
-	}))
-	samlRouter.Handle("/setup", verifyCSRF(http.HandlerFunc(wfSaml.setup)))
-	samlRouter.HandleFunc("/restart", func(w http.ResponseWriter, r *http.Request) {
-		http.SetCookie(w, &http.Cookie{Name: "token", MaxAge: -1, Path: "/", HttpOnly: true, Domain: r.Host})
-		http.Redirect(w, r, "/saml/callback", http.StatusTemporaryRedirect)
+			m.ServeHTTP(w, r)
+		}))
+		r.Handle("/slo", requireSamlSetup(func(w http.ResponseWriter, r *http.Request) {
+			//TODO: does this work for idp initiated single logout where no session is available?
+			var m *samlsp.Middleware = r.Context().Value(sessKey).(*Session).SamlMw
+			m.ServeHTTP(w, r)
+		}))
+		r.Handle("/setup", verifyCSRF(http.HandlerFunc(wfSaml.setup)))
+		r.HandleFunc("/restart", func(w http.ResponseWriter, r *http.Request) {
+			http.SetCookie(w, &http.Cookie{Name: "token", MaxAge: -1, Path: "/", HttpOnly: true, Domain: r.Host})
+			http.Redirect(w, r, "/saml/callback", http.StatusTemporaryRedirect)
+		})
+		r.HandleFunc("/metadata/*", wfSaml.metadata)
 	})
-	samlRouter.PathPrefix("/metadata/").HandlerFunc(wfSaml.metadata)
-	samlRouter.Use(rateLimit.Limit)
-	samlRouter.Use(session)
-	oidcRouter := root.PathPrefix("/oidc").Subrouter()
-	oidcRouter.HandleFunc("", wfOidc.index).Methods("GET")
-	oidcRouter.Handle("/setup", verifyCSRF(http.HandlerFunc(wfOidc.setup))).Methods("POST")
-	oidcRouter.HandleFunc("/setup", redirectHome).Methods("GET")
-	oidcRouter.Handle("/restart", requireOidcSetup(wfOidc.restart)).Methods("GET")
-	oidcRouter.Handle("/callback", requireOidcSetup(wfOidc.callback)).Methods("POST")
-	oidcRouter.HandleFunc("/callback", redirectHome).Methods()
-	oidcRouter.Use(rateLimit.Limit)
-	oidcRouter.Use(session)
+
+	root.Route("/oidc", func(r chi.Router) {
+		r.Use(rateLimit.Limit)
+		r.Use(session)
+		r.Get("/", wfOidc.index)
+		r.Post("/setup", verifyCSRF(http.HandlerFunc(wfOidc.setup)).ServeHTTP)
+		r.Get("/setup", redirectHome)
+		r.Get("/restart", requireOidcSetup(wfOidc.restart).ServeHTTP)
+		r.Post("/callback", requireOidcSetup(wfOidc.callback).ServeHTTP)
+		r.Get("/callback", redirectHome)
+	})
+
 	if cfg.StaticDir != "" {
 		fs = http.FileServer(http.Dir(cfg.StaticDir))
 	} else {
@@ -262,7 +257,6 @@ func SetupRoutes(c *Config) http.Handler {
 	root.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/oidc", http.StatusFound)
 	})
-	root.PathPrefix("/").Handler(fs)
-	root.Use(handlers.RecoveryHandler())
-	return handlers.CombinedLoggingHandler(os.Stdout, proxyRemoteAddr(root))
+	root.Get("/*", fs.ServeHTTP)
+	return root
 }
