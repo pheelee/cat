@@ -148,7 +148,10 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 		raw_id = r.FormValue("id_token")
 		raw_access = r.FormValue("access_token")
 	}
-	var data oidcData
+	var data oidcData = oidcData{
+		RawAccessToken: raw_access,
+		RawIDToken:     raw_id,
+	}
 	// Auth0 issues opaque access tokens used for the userinfo endpoint authentication
 	// https://auth0.com/docs/tokens/access-tokens#opaque-access-tokens
 	if raw_access != "" && strings.Contains(raw_access, ".") {

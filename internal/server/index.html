@@ -161,6 +161,25 @@
                     </div>
                   </div>
                 </li>
+                <li>
+                  <div class="collapsible-header"><i class="material-icons">vpn_key</i>Raw Tokens</div>
+                  <div class="collapsible-body">
+                    <div class="row">
+                      <div class="col m12 s12">
+                        <span class="token-title blue-text accent-3-text">Access Token</span>
+                        <div class="row">
+                          <pre class="token">{{.OidcData.RawAccessToken}}</pre>
+                        </div>
+                      </div>
+                      <div class="col m12 s12">
+                        <span class="token-title blue-text accent-3-text">ID Token</span>
+                        <div class="row">
+                          <pre class="token">{{.OidcData.RawIDToken}}</pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </li>
               </ul>
           </div>
       </div>
@@ -294,7 +313,7 @@
       <div class="footer-copyright blue darken-3">
         <div class="container">
           <div class="row" style="margin-bottom:0;">
-            <div class="col s4 m4">© 2021-2022 Philipp Ritter</div>
+            <div class="col s4 m4">© 2021-2023 Philipp Ritter</div>
             <div class="col s4 m4"><span class="version">Commit: {{.Version}}</span></div>
             <div class="col s4 m4"><span class="grey-text text-lighten-4 right">made with ❤️ and ☕ in 🇨🇭</span></div>
           </div>

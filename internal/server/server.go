@@ -55,16 +55,18 @@ type templateData struct {
 }
 
 type oidcData struct {
-	ProviderURL  string
-	RedirectURL  string
-	AppID        string
-	ClientSecret string
-	Scope        string
-	AccessToken  string
-	IDToken      string
-	UserInfo     string
-	ResponseType string
-	PKCE         bool
+	ProviderURL    string
+	RedirectURL    string
+	AppID          string
+	ClientSecret   string
+	Scope          string
+	AccessToken    string
+	IDToken        string
+	RawAccessToken string
+	RawIDToken     string
+	UserInfo       string
+	ResponseType   string
+	PKCE           bool
 }
 
 type samlData struct {
@@ -227,6 +229,11 @@ func SetupRoutes(c *Config) http.Handler {
 				log.Printf("ERROR: %s", err)
 			}
 		}
+		m.ServeHTTP(w, r)
+	}))
+	samlRouter.Handle("/slo", requireSamlSetup(func(w http.ResponseWriter, r *http.Request) {
+		//TODO: does this work for idp initiated single logout where no session is available?
+		var m *samlsp.Middleware = r.Context().Value(sessKey).(*Session).SamlMw
 		m.ServeHTTP(w, r)
 	}))
 	samlRouter.Handle("/setup", verifyCSRF(http.HandlerFunc(wfSaml.setup)))
