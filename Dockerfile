@@ -1,4 +1,4 @@
-FROM golang:1.16-alpine as builder
+FROM golang:1.19-alpine as builder
 ARG GOOS=linux
 ARG GOARCH=amd64
 ARG GOARM=7
