@@ -7,6 +7,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"time"
@@ -69,10 +70,7 @@ func Generate(name string, org string, country string, ou string, expires string
 }
 
 func (c *Certificate) Save(rootPath string) error {
-	b, err := json.MarshalIndent(c, "", "  ")
-	if err != nil {
-		return err
-	}
+	b, _ := json.MarshalIndent(c, "", "  ")
 	return ioutil.WriteFile(rootPath+"/"+c.Name+".json", b, 0644)
 }
 
@@ -85,6 +83,9 @@ func (c *Certificate) Load(rootPath string) error {
 		return err
 	}
 	pb, _ := pem.Decode(c.CertPEM)
+	if pb == nil {
+		return fmt.Errorf("failed to decode certificate")
+	}
 	c.Cert, err = x509.ParseCertificate(pb.Bytes)
 	if err != nil {
 		return err
