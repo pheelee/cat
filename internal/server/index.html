@@ -25,7 +25,7 @@
               </ul>
             </div>
           </nav>
-        
+
           <ul class="sidenav" id="mobile-menu">
             <li class="active"><a href="#">OIDC</a></li>
             <li><a href="#">SAML</a></li>
@@ -314,7 +314,7 @@
         <div class="container">
           <div class="row" style="margin-bottom:0;">
             <div class="col s4 m4">© 2021-2024 Philipp Ritter</div>
-            <div class="col s4 m4"><span class="version">Commit: {{.Version}}</span></div>
+            <div class="col s4 m4"><span class="version">Version: {{.Version}}</span></div>
             <div class="col s4 m4"><span class="grey-text text-lighten-4 right">made with ❤️ and ☕ in 🇨🇭</span></div>
           </div>
         </div>
@@ -328,12 +328,12 @@
           let step = document.querySelector("body").dataset["step"];
           let c = M.Collapsible.init(document.querySelector(".collapsible"),{});
           c.open(step);
-          setTimeout(function(){document.querySelectorAll(".input-field").forEach(e => { 
+          setTimeout(function(){document.querySelectorAll(".input-field").forEach(e => {
             let el = e.querySelector("input");
             if (el == null){
               el = e.querySelector("textarea");
             }
-            if (el.value != "") 
+            if (el.value != "")
             {e.querySelector("label").classList.add("active")} })}, 1)
           M.FormSelect.init(document.querySelectorAll("select"), {});
           Form.Load(document.querySelectorAll(".persist"),"Form-"+document.querySelector("body").dataset["workflow"]);
