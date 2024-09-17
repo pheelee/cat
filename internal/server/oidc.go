@@ -101,7 +101,10 @@ func (wf *OidcWorkflow) restart(w http.ResponseWriter, r *http.Request) {
 
 func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		renderIndex(w, r, &templateData{Error: err.Error()})
+		return
+	}
 	e := r.FormValue("error")
 	if e != "" {
 		ed, _ := url.QueryUnescape(r.FormValue("error_description"))
@@ -215,7 +218,7 @@ func NewVerifier(length int) *Verifier {
 	chars = append(chars, specialChars...)
 
 	b := make([]byte, length)
-	m := mrand.New(mrand.NewSource(time.Now().UnixNano()))
+	m := mrand.New(mrand.NewSource(time.Now().UnixNano())) //#nosec G404
 	for i := 0; i < length; i++ {
 		b[i] = byte(chars[m.Intn(len(chars))])
 	}

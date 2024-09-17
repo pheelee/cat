@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
@@ -86,14 +87,14 @@ func RandomString(n int) string {
 	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letter[rand.Intn(len(letter))]
+		b[i] = letter[rand.Intn(len(letter))] // #nosec G404
 	}
 	return string(b)
 }
 
 func RandomHash() string {
 	var b []byte = make([]byte, 32)
-	rand.Read(b)
+	_, _ = crand.Read(b)
 	h := sha256.New()
 	h.Write(b)
 	return hex.EncodeToString(h.Sum(nil))
@@ -130,12 +131,16 @@ func renderIndex(w http.ResponseWriter, r *http.Request, d *templateData) {
 	w.Header().Set("X-Frame-Options", "deny")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	tpl.Execute(w, d)
+	if err := tpl.Execute(w, d); err != nil {
+		log.Printf("ERROR: %s", err)
+	}
 }
 
 func verifyCSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+		if err := r.ParseForm(); err != nil {
+			log.Printf("ERROR: %s", err)
+		}
 		s := r.Context().Value(sessKey).(*Session)
 		if s.CsrfToken == "" || r.Form.Get("csrf_token") != s.CsrfToken {
 			renderIndex(w, r, &templateData{Error: "Invalid CSRF Token"})

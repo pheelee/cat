@@ -8,8 +8,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -71,11 +72,11 @@ func Generate(name string, org string, country string, ou string, expires string
 
 func (c *Certificate) Save(rootPath string) error {
 	b, _ := json.MarshalIndent(c, "", "  ")
-	return ioutil.WriteFile(rootPath+"/"+c.Name+".json", b, 0644)
+	return os.WriteFile(rootPath+"/"+c.Name+".json", b, 0600)
 }
 
 func (c *Certificate) Load(rootPath string) error {
-	b, err := ioutil.ReadFile(rootPath + "/" + c.Name + ".json")
+	b, err := os.ReadFile(filepath.Clean(rootPath) + "/" + c.Name + ".json")
 	if err != nil {
 		return err
 	}

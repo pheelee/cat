@@ -29,7 +29,9 @@ type SamlOpts struct {
 }
 
 func (wf *SamlWorkflow) parseOpts(r *http.Request) SamlOpts {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		return SamlOpts{}
+	}
 	return SamlOpts{
 		MetadataFile:            []byte(r.FormValue("metadatafile")),
 		MetadataURL:             r.FormValue("metadata"),
@@ -154,7 +156,7 @@ func (wf *SamlWorkflow) metadata(w http.ResponseWriter, r *http.Request) {
 		}
 		buf, _ := xml.MarshalIndent(d, "", "  ")
 		w.Header().Set("Content-Type", "application/samlmetadata+xml")
-		w.Write(buf)
+		_, _ = w.Write(buf)
 		return
 
 	}
