@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/crewjam/saml/samlsp"
 	"golang.org/x/oauth2"
 )

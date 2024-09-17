@@ -5,12 +5,9 @@ go 1.21.0
 toolchain go1.21.6
 
 require (
-	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/go-xmlfmt/xmlfmt v1.1.2
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
-	github.com/pquerna/cachecontrol v0.2.0 // indirect
 	golang.org/x/oauth2 v0.23.0
-	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 )
 
 require (
@@ -20,6 +17,7 @@ require (
 
 require (
 	github.com/beevik/etree v1.4.1 // indirect
+	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/crewjam/httperr v0.2.0 // indirect
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
@@ -28,3 +26,5 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/russellhaering/goxmldsig v1.4.0 // indirect
 )
+
+require github.com/go-jose/go-jose/v4 v4.0.2 // indirect
