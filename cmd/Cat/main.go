@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/pheelee/Cat/internal/server"
@@ -36,16 +40,33 @@ func main() {
 	if err != nil || !time.Now().Before(crt.Cert.NotAfter) {
 		crt, err = cert.Generate("cat-tokensigner", "Cat", "CH", "IT", fmt.Sprintf("%dh", 24*180))
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
-		crt.Save("./")
+		if err := crt.Save("./"); err != nil {
+			log.Fatal(err)
+		}
 	}
 	servercfg.Certificate = crt
 	app := server.SetupRoutes(&servercfg)
 
-	fmt.Printf("Listening on :%d\n", port)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", port), app)
-	if err != nil {
-		fmt.Print(err)
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	srv := http.Server{
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           app,
+		ReadHeaderTimeout: time.Second * 60,
+	}
+	go func(srv *http.Server) {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Println("ERROR: ", err)
+		}
+	}(&srv)
+	log.Println("Listening on port", port)
+	<-sig
+	log.Println("Shutting down webserver")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer func() { cancel() }()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Println("ERROR: ", err)
 	}
 }
