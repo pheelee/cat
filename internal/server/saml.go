@@ -67,7 +67,7 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 	}
 	s := r.Context().Value(sessKey).(*Session)
 	s.SamlOpts = o
-	s.Expires = time.Now().Add(Sessions.Lifetime)
+	s.Expires = time.Now().Add(cfg.SessionLifetime)
 	s.SamlMw = samlMw
 	c, err := r.Cookie(string(sessKey))
 	if err != nil {

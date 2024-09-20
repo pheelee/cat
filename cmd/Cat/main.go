@@ -26,16 +26,19 @@ func getEnvOrString(s string, d string) string {
 
 func main() {
 	var port int
+	var sessionHours int
 	var servercfg server.Config = server.Config{}
 	flag.IntVar(&port, "port", 8090, "[optional] Listening port")
 	flag.StringVar(&servercfg.StaticDir, "StaticDir", getEnvOrString("STATIC_DIR", ""), "[optional] set static dir to html/js/css files")
 	flag.StringVar(&servercfg.CookieSecret, "CookieSecret", getEnvOrString("COOKIE_SECRET", ""), "[mandatory] secret string to keep cookies safe")
+	flag.IntVar(&sessionHours, "SessionLifetime", 24*30, "[optional] session lifetime in hours (default 30 days)")
 	flag.Parse()
 
 	if servercfg.CookieSecret == "" {
 		flag.CommandLine.Usage()
 		os.Exit(0)
 	}
+	servercfg.SessionLifetime = time.Duration(sessionHours) * time.Hour
 	crt := &cert.Certificate{Name: "cat-tokensigner"}
 	err := crt.Load("./")
 	if err != nil || !time.Now().Before(crt.Cert.NotAfter) {

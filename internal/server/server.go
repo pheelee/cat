@@ -40,9 +40,10 @@ const sessKey sessionKey = "session"
 
 // Config holds the servers configurtion parameters
 type Config struct {
-	StaticDir    string
-	CookieSecret string
-	Certificate  *cert.Certificate
+	StaticDir       string
+	CookieSecret    string
+	Certificate     *cert.Certificate
+	SessionLifetime time.Duration
 }
 
 type templateData struct {
@@ -178,7 +179,7 @@ func session(next http.Handler) http.Handler {
 		s := GetSession(r)
 		if s == nil || !s.Valid() {
 			s = &Session{
-				Expires: time.Now().Add(Sessions.Lifetime),
+				Expires: time.Now().Add(cfg.SessionLifetime),
 			}
 			id := RandomHash()
 			Sessions.Add(s, id)
@@ -190,7 +191,7 @@ func session(next http.Handler) http.Handler {
 				Name:     string(sessKey),
 				Value:    id,
 				Path:     "/",
-				Expires:  time.Now().Add(Sessions.Lifetime),
+				Expires:  time.Now().Add(cfg.SessionLifetime),
 				HttpOnly: true,
 				Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
 				Domain:   r.URL.Host,

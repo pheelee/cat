@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"sync"
@@ -8,16 +9,19 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/crewjam/saml/samlsp"
+	"github.com/pheelee/Cat/pkg/cert"
 	"golang.org/x/oauth2"
 )
 
 var Sessions SessionManager = SessionManager{
-	Lifetime: 12 * time.Hour,
-	Items:    map[string]*Session{},
+	Items: map[string]*Session{},
 }
 
 type Session struct {
-	Expires       time.Time
+	Expires      time.Time
+	PrivateKey   *rsa.PrivateKey
+	Certificates map[string]*cert.Certificate
+
 	Provider      *oidc.Provider
 	Config        *oauth2.Config
 	OIDCVerifier  *Verifier
@@ -30,8 +34,7 @@ type Session struct {
 
 type SessionManager struct {
 	sync.Mutex
-	Lifetime time.Duration
-	Items    map[string]*Session
+	Items map[string]*Session
 }
 
 func GetSession(r *http.Request) *Session {

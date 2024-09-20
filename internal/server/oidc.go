@@ -75,7 +75,7 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		Scopes:       strings.Split(userInput.Scope, " "),
 	}
 	s := r.Context().Value(sessKey).(*Session)
-	s.Expires = time.Now().Add(Sessions.Lifetime)
+	s.Expires = time.Now().Add(cfg.SessionLifetime)
 	s.Provider = provider
 	s.Config = &config
 	s.State = RandomString(16)
