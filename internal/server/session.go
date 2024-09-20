@@ -11,8 +11,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var shutdown bool = false
-
 var Sessions SessionManager = SessionManager{
 	Lifetime: 12 * time.Hour,
 	Items:    map[string]*Session{},
@@ -70,18 +68,21 @@ func (s *Session) Valid() bool {
 	return time.Now().Before(s.Expires)
 }
 
-func RunSessionCleanup() {
+func RunSessionCleanup(shutdown <-chan struct{}, routines *sync.WaitGroup) {
+	routines.Add(1)
+	defer routines.Done()
+	t := time.NewTicker(30 * time.Second)
 	for {
-		if shutdown {
-			break
-		}
-		now := time.Now()
-		for h, s := range Sessions.Items {
-			if now.After(s.Expires) {
-				Sessions.Remove(h)
+		select {
+		case <-t.C:
+			now := time.Now()
+			for h, s := range Sessions.Items {
+				if now.After(s.Expires) {
+					Sessions.Remove(h)
+				}
 			}
+		case <-shutdown:
+			return
 		}
-		time.Sleep(30 * time.Second)
 	}
-
 }

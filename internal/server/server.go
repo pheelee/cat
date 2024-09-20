@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -201,8 +202,8 @@ func session(next http.Handler) http.Handler {
 	})
 }
 
-func SetupRoutes(c *Config) http.Handler {
-	go RunSessionCleanup()
+func SetupRoutes(c *Config, shutdown <-chan struct{}, routines *sync.WaitGroup) http.Handler {
+	go RunSessionCleanup(shutdown, routines)
 	rateLimit = rlimit.New(5, time.Second*5)
 	var fs http.Handler
 	cfg = c

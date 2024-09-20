@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -47,7 +48,9 @@ func main() {
 		}
 	}
 	servercfg.Certificate = crt
-	app := server.SetupRoutes(&servercfg)
+	routines := &sync.WaitGroup{}
+	shutdown := make(chan struct{})
+	app := server.SetupRoutes(&servercfg, shutdown, routines)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -63,6 +66,9 @@ func main() {
 	}(&srv)
 	log.Println("Listening on port", port)
 	<-sig
+	log.Println("Stopping all goroutines and wait for them to finish")
+	shutdown <- struct{}{}
+	routines.Wait()
 	log.Println("Shutting down webserver")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer func() { cancel() }()
