@@ -9,7 +9,6 @@ ENV GOARCH=$GOARCH
 ENV GOARM=$GOARM
 COPY ./ /go/src/Cat
 RUN set -ex; \
-    apk add --update --no-cache git; \
     cd /go/src/Cat; \
     mkdir -p dist; \
     go test ./...; \
