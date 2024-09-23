@@ -113,7 +113,8 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//TODO: Build for POST requests another function
-	s := GetSession(r)
+	c, _ := r.Cookie(string(sessKey))
+	s := cfg.SessionManager.Get(c.Value)
 	if s == nil {
 		renderIndex(w, r, &templateData{Error: "Session not found"})
 		return

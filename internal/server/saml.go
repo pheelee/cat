@@ -137,7 +137,7 @@ func (wf *SamlWorkflow) metadata(w http.ResponseWriter, r *http.Request) {
 	m := rex.FindStringSubmatch(r.URL.Path)
 	if len(m) > 1 && m[1] != "" {
 		r.URL.Path = "/saml/metadata"
-		s := Sessions.Get(m[1])
+		s := cfg.SessionManager.Get(m[1])
 		if s == nil {
 			renderIndex(w, r, &templateData{Error: "Session not found"})
 			return

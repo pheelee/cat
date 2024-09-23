@@ -50,10 +50,17 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+
+	sm, err := server.LoadSessionManager("./sessions.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	servercfg.SessionManager = sm
+
 	servercfg.Certificate = crt
-	routines := &sync.WaitGroup{}
+	routines := sync.WaitGroup{}
 	shutdown := make(chan struct{})
-	app := server.SetupRoutes(&servercfg, shutdown, routines)
+	app := server.SetupRoutes(&servercfg, shutdown, &routines)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -69,13 +76,13 @@ func main() {
 	}(&srv)
 	log.Println("Listening on port", port)
 	<-sig
-	log.Println("Stopping all goroutines and wait for them to finish")
-	shutdown <- struct{}{}
-	routines.Wait()
 	log.Println("Shutting down webserver")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer func() { cancel() }()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Println("ERROR: ", err)
 	}
+	log.Println("Stopping all goroutines and wait for them to finish")
+	shutdown <- struct{}{}
+	routines.Wait()
 }
