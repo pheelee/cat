@@ -18,6 +18,7 @@ import (
 )
 
 type Session struct {
+	ID           string              `json:"id"`
 	Expires      time.Time           `json:"expires"`
 	Certificates []*cert.Certificate `json:"certificates"`
 
@@ -62,11 +63,12 @@ func (m *SessionManager) New() (*Session, error) {
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
 	id := randomHash()
-	crt, err := cert.Generate(id, "IRBE", "CH", "IT", cfg.SessionLifetime.String())
+	crt, err := cert.Generate("token-signer-"+id[:8], "IRBE", "CH", "IT", cfg.SessionLifetime.String())
 	if err != nil {
 		return nil, err
 	}
 	m.Items[id] = &Session{
+		ID:           id,
 		Expires:      time.Now().Add(cfg.SessionLifetime),
 		Certificates: []*cert.Certificate{},
 	}

@@ -37,6 +37,7 @@ func Generate(name string, org string, country string, ou string, expires string
 			Organization:       []string{org},
 			Country:            []string{country},
 			OrganizationalUnit: []string{ou},
+			CommonName:         name,
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(expire),
@@ -57,6 +58,7 @@ func Generate(name string, org string, country string, ou string, expires string
 		Name:       name,
 		Cert:       crt,
 		PrivateKey: priv,
+		CertPEM:    pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: crt.Raw}),
 	}, nil
 }
 
@@ -89,6 +91,7 @@ func (c *Certificate) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+	c.CertPEM = crt.CertPEM
 	p, _ = pem.Decode(crt.PrivKeyPEM)
 	if p == nil {
 		return errors.New("failed to parse private key PEM")

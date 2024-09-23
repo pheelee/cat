@@ -60,12 +60,12 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		scheme = "http"
 	}
 
-	samlMw, err = setupSaml(cfg.Certificate, fmt.Sprintf("%s://%s", scheme, r.Host), o)
+	s := r.Context().Value(sessKey).(*Session)
+	samlMw, err = setupSaml(s.Certificates[0], fmt.Sprintf("%s://%s", scheme, r.Host), o)
 	if err != nil {
 		renderIndex(w, r, &templateData{Error: fmt.Sprintf("Could not setup SAML Service Provider<br>%s", err)})
 		return
 	}
-	s := r.Context().Value(sessKey).(*Session)
 	s.SamlOpts = o
 	s.Expires = time.Now().Add(cfg.SessionLifetime)
 	s.SamlMw = samlMw

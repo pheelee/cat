@@ -18,7 +18,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-xmlfmt/xmlfmt"
 	"github.com/grantae/certinfo"
-	"github.com/pheelee/Cat/pkg/cert"
 	"github.com/pheelee/Cat/pkg/rlimit"
 )
 
@@ -39,7 +38,6 @@ const sessKey sessionKey = "session"
 type Config struct {
 	StaticDir       string
 	CookieSecret    string
-	Certificate     *cert.Certificate
 	SessionLifetime time.Duration
 	SessionManager  *SessionManager
 }
@@ -112,13 +110,13 @@ func renderIndex(w http.ResponseWriter, r *http.Request, d *templateData) {
 	}
 	s := r.Context().Value(sessKey).(*Session)
 	s.CsrfToken = d.CsrfToken
-	c, err := certinfo.CertificateText(cfg.Certificate.Cert)
+	c, err := certinfo.CertificateText(s.Certificates[0].Cert)
 	if err != nil {
 		d.SamlData.Certificate = err.Error()
 	} else {
 		d.SamlData.Certificate = c
 	}
-	d.SamlData.CertRaw = string(cfg.Certificate.CertPEM)
+	d.SamlData.CertRaw = string(s.Certificates[0].CertPEM)
 
 	w.Header().Set("X-Frame-Options", "deny")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -174,8 +172,6 @@ func session(next http.Handler) http.Handler {
 				return
 			}
 		}
-
-		id := randomHash()
 		s, err := cfg.SessionManager.New()
 		if err != nil {
 			renderIndex(w, r, &templateData{Error: err.Error()})
@@ -187,7 +183,7 @@ func session(next http.Handler) http.Handler {
 		}
 		c = &http.Cookie{
 			Name:     string(sessKey),
-			Value:    id,
+			Value:    s.ID,
 			Path:     "/",
 			Expires:  s.Expires,
 			HttpOnly: true,

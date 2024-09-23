@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/pheelee/Cat/internal/server"
-	"github.com/pheelee/Cat/pkg/cert"
 )
 
 func getEnvOrString(s string, d string) string {
@@ -39,25 +38,11 @@ func main() {
 		os.Exit(0)
 	}
 	servercfg.SessionLifetime = time.Duration(sessionHours) * time.Hour
-	crt := &cert.Certificate{Name: "cat-tokensigner"}
-	err := crt.Load("./")
-	if err != nil || !time.Now().Before(crt.Cert.NotAfter) {
-		crt, err = cert.Generate("cat-tokensigner", "Cat", "CH", "IT", fmt.Sprintf("%dh", 24*180))
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := crt.Save("./"); err != nil {
-			log.Fatal(err)
-		}
-	}
-
 	sm, err := server.LoadSessionManager("./sessions.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 	servercfg.SessionManager = sm
-
-	servercfg.Certificate = crt
 	routines := sync.WaitGroup{}
 	shutdown := make(chan struct{})
 	app := server.SetupRoutes(&servercfg, shutdown, &routines)

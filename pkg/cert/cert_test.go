@@ -20,8 +20,8 @@ func TestGenerate(t *testing.T) {
 	if c.PrivateKey == nil {
 		t.Fatal("expected private key, got nil")
 	}
-	if c.CertPEM != nil {
-		t.Fatal("expected nil")
+	if c.CertPEM == nil {
+		t.Fatal("expected certificate PEM, got nil")
 	}
 	if c.PrivKeyPEM != nil {
 		t.Fatal("expected nil")
