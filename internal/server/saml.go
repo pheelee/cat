@@ -115,7 +115,7 @@ func setupSaml(cert *cert.Certificate, rootUrl string, o SamlOpts) (*samlsp.Midd
 
 	sp, err := samlsp.New(samlsp.Options{
 		URL:                *url,
-		Key:                cert.PrivteKey,
+		Key:                cert.PrivateKey,
 		Certificate:        cert.Cert,
 		IDPMetadata:        meta,
 		SignRequest:        o.SignRequest,

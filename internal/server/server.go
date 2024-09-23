@@ -175,12 +175,12 @@ func session(next http.Handler) http.Handler {
 			}
 		}
 
-		s := &Session{
-			Expires: time.Now().Add(cfg.SessionLifetime),
-		}
-
 		id := randomHash()
-		cfg.SessionManager.Add(s, id)
+		s, err := cfg.SessionManager.New()
+		if err != nil {
+			renderIndex(w, r, &templateData{Error: err.Error()})
+			return
+		}
 		ssite := http.SameSiteDefaultMode
 		if r.Header.Get("X-Forwarded-Proto") == "https" {
 			ssite = http.SameSiteNoneMode
@@ -189,7 +189,7 @@ func session(next http.Handler) http.Handler {
 			Name:     string(sessKey),
 			Value:    id,
 			Path:     "/",
-			Expires:  time.Now().Add(cfg.SessionLifetime),
+			Expires:  s.Expires,
 			HttpOnly: true,
 			Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
 			Domain:   r.URL.Host,

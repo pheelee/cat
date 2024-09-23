@@ -59,6 +59,8 @@ func LoadSessionManager(filepath string) (*SessionManager, error) {
 }
 
 func (m *SessionManager) New() (*Session, error) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	id := randomHash()
 	crt, err := cert.Generate(id, "IRBE", "CH", "IT", cfg.SessionLifetime.String())
 	if err != nil {
@@ -66,17 +68,10 @@ func (m *SessionManager) New() (*Session, error) {
 	}
 	m.Items[id] = &Session{
 		Expires:      time.Now().Add(cfg.SessionLifetime),
-		Certificates: []*cert.Certificate{crt},
+		Certificates: []*cert.Certificate{},
 	}
-
+	m.Items[id].Certificates = append(m.Items[id].Certificates, crt)
 	return m.Items[id], nil
-}
-
-func (m *SessionManager) Add(s *Session, hash string) {
-	m.Mutex.Lock()
-	m.Items[hash] = s
-	m.Mutex.Unlock()
-	fmt.Printf("%s Session added %s\n", time.Now(), hash)
 }
 
 func (m *SessionManager) Remove(hash string) {
