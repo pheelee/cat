@@ -60,14 +60,14 @@ func (wf *SamlWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		scheme = "http"
 	}
 
-	samlMw, err = setupSaml(cfg.Certificate, fmt.Sprintf("%s://%s", scheme, r.Host), o)
+	s := r.Context().Value(sessKey).(*Session)
+	samlMw, err = setupSaml(s.Certificates[0], fmt.Sprintf("%s://%s", scheme, r.Host), o)
 	if err != nil {
 		renderIndex(w, r, &templateData{Error: fmt.Sprintf("Could not setup SAML Service Provider<br>%s", err)})
 		return
 	}
-	s := r.Context().Value(sessKey).(*Session)
 	s.SamlOpts = o
-	s.Expires = time.Now().Add(Sessions.Lifetime)
+	s.Expires = time.Now().Add(cfg.SessionLifetime)
 	s.SamlMw = samlMw
 	c, err := r.Cookie(string(sessKey))
 	if err != nil {
@@ -115,7 +115,7 @@ func setupSaml(cert *cert.Certificate, rootUrl string, o SamlOpts) (*samlsp.Midd
 
 	sp, err := samlsp.New(samlsp.Options{
 		URL:                *url,
-		Key:                cert.PrivteKey,
+		Key:                cert.PrivateKey,
 		Certificate:        cert.Cert,
 		IDPMetadata:        meta,
 		SignRequest:        o.SignRequest,
@@ -137,7 +137,7 @@ func (wf *SamlWorkflow) metadata(w http.ResponseWriter, r *http.Request) {
 	m := rex.FindStringSubmatch(r.URL.Path)
 	if len(m) > 1 && m[1] != "" {
 		r.URL.Path = "/saml/metadata"
-		s := Sessions.Get(m[1])
+		s := cfg.SessionManager.Get(m[1])
 		if s == nil {
 			renderIndex(w, r, &templateData{Error: "Session not found"})
 			return

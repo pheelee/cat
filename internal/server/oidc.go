@@ -75,7 +75,7 @@ func (wf *OidcWorkflow) setup(w http.ResponseWriter, r *http.Request) {
 		Scopes:       strings.Split(userInput.Scope, " "),
 	}
 	s := r.Context().Value(sessKey).(*Session)
-	s.Expires = time.Now().Add(Sessions.Lifetime)
+	s.Expires = time.Now().Add(cfg.SessionLifetime)
 	s.Provider = provider
 	s.Config = &config
 	s.State = RandomString(16)
@@ -113,7 +113,8 @@ func (wf *OidcWorkflow) callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//TODO: Build for POST requests another function
-	s := GetSession(r)
+	c, _ := r.Cookie(string(sessKey))
+	s := cfg.SessionManager.Get(c.Value)
 	if s == nil {
 		renderIndex(w, r, &templateData{Error: "Session not found"})
 		return

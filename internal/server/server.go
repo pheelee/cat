@@ -2,15 +2,13 @@ package server
 
 import (
 	"context"
-	crand "crypto/rand"
-	"crypto/sha256"
 	"embed"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -20,7 +18,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-xmlfmt/xmlfmt"
 	"github.com/grantae/certinfo"
-	"github.com/pheelee/Cat/pkg/cert"
 	"github.com/pheelee/Cat/pkg/rlimit"
 )
 
@@ -39,9 +36,10 @@ const sessKey sessionKey = "session"
 
 // Config holds the servers configurtion parameters
 type Config struct {
-	StaticDir    string
-	CookieSecret string
-	Certificate  *cert.Certificate
+	StaticDir       string
+	CookieSecret    string
+	SessionLifetime time.Duration
+	SessionManager  *SessionManager
 }
 
 type templateData struct {
@@ -92,14 +90,6 @@ func RandomString(n int) string {
 	return string(b)
 }
 
-func RandomHash() string {
-	var b []byte = make([]byte, 32)
-	_, _ = crand.Read(b)
-	h := sha256.New()
-	h.Write(b)
-	return hex.EncodeToString(h.Sum(nil))
-}
-
 func redirectHome(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -112,7 +102,7 @@ func renderIndex(w http.ResponseWriter, r *http.Request, d *templateData) {
 		tpl = template.Must(template.ParseFS(f, "index.html"))
 	}
 	p := strings.Split(r.URL.Path, "/")
-	d.CsrfToken = RandomHash()
+	d.CsrfToken = randomHash()
 	d.Version = VERSION
 	d.Workflow = p[1]
 	if len(p) > 2 && p[2] == "callback" {
@@ -120,13 +110,13 @@ func renderIndex(w http.ResponseWriter, r *http.Request, d *templateData) {
 	}
 	s := r.Context().Value(sessKey).(*Session)
 	s.CsrfToken = d.CsrfToken
-	c, err := certinfo.CertificateText(cfg.Certificate.Cert)
+	c, err := certinfo.CertificateText(s.Certificates[0].Cert)
 	if err != nil {
 		d.SamlData.Certificate = err.Error()
 	} else {
 		d.SamlData.Certificate = c
 	}
-	d.SamlData.CertRaw = string(cfg.Certificate.CertPEM)
+	d.SamlData.CertRaw = string(s.Certificates[0].CertPEM)
 
 	w.Header().Set("X-Frame-Options", "deny")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -174,38 +164,43 @@ func requireOidcSetup(next http.HandlerFunc) http.Handler {
 
 func session(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s := GetSession(r)
-		if s == nil || !s.Valid() {
-			s = &Session{
-				Expires: time.Now().Add(Sessions.Lifetime),
+		c, _ := r.Cookie(string(sessKey))
+		if c != nil {
+			s := cfg.SessionManager.Get(c.Value)
+			if s != nil && s.Valid() {
+				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), sessKey, s)))
+				return
 			}
-			id := RandomHash()
-			Sessions.Add(s, id)
-			ssite := http.SameSiteDefaultMode
-			if r.Header.Get("X-Forwarded-Proto") == "https" {
-				ssite = http.SameSiteNoneMode
-			}
-			c := http.Cookie{
-				Name:     string(sessKey),
-				Value:    id,
-				Path:     "/",
-				Expires:  time.Now().Add(Sessions.Lifetime),
-				HttpOnly: true,
-				Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
-				Domain:   r.URL.Host,
-				SameSite: ssite,
-			}
-			http.SetCookie(w, &c)
 		}
+		s, err := cfg.SessionManager.New()
+		if err != nil {
+			renderIndex(w, r, &templateData{Error: err.Error()})
+			return
+		}
+		ssite := http.SameSiteDefaultMode
+		if r.Header.Get("X-Forwarded-Proto") == "https" {
+			ssite = http.SameSiteNoneMode
+		}
+		c = &http.Cookie{
+			Name:     string(sessKey),
+			Value:    s.ID,
+			Path:     "/",
+			Expires:  s.Expires,
+			HttpOnly: true,
+			Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
+			Domain:   r.URL.Host,
+			SameSite: ssite,
+		}
+		http.SetCookie(w, c)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), sessKey, s)))
 	})
 }
 
-func SetupRoutes(c *Config) http.Handler {
-	go RunSessionCleanup()
+func SetupRoutes(c *Config, shutdown <-chan struct{}, routines *sync.WaitGroup) http.Handler {
+	cfg = c
+	go cfg.SessionManager.RunSessionCleanup(shutdown, routines)
 	rateLimit = rlimit.New(5, time.Second*5)
 	var fs http.Handler
-	cfg = c
 	root := chi.NewRouter()
 	root.Use(middleware.RealIP)
 	root.Use(middleware.Logger)

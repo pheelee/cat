@@ -17,14 +17,14 @@ func TestGenerate(t *testing.T) {
 	if c.Cert == nil {
 		t.Fatal("expected certificate, got nil")
 	}
-	if c.PrivteKey == nil {
+	if c.PrivateKey == nil {
 		t.Fatal("expected private key, got nil")
 	}
 	if c.CertPEM == nil {
-		t.Fatal("expected certificate pem, got nil")
+		t.Fatal("expected certificate PEM, got nil")
 	}
-	if c.PrivKeyPEM == nil {
-		t.Fatal("expected private key pem, got nil")
+	if c.PrivKeyPEM != nil {
+		t.Fatal("expected nil")
 	}
 
 	// Test invalid expires string
@@ -57,18 +57,6 @@ func TestLoad(t *testing.T) {
 	err = c.Load("/tmp")
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	// Update CertPEM with invalid data
-	c.CertPEM = []byte("invalid")
-	// Save cert with invalid data
-	if err := c.Save("/tmp"); err != nil {
-		t.Fatal(err)
-	}
-	// Test ParseCertificate error in Load function
-	err = c.Load("/tmp")
-	if err == nil {
-		t.Fatal("expected error, got nil")
 	}
 
 	// Test invalid file

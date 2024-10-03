@@ -1,54 +1,79 @@
 package server
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
-	"net/http"
+	"os"
+	"path"
 	"sync"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/crewjam/saml/samlsp"
+	"github.com/pheelee/Cat/pkg/cert"
 	"golang.org/x/oauth2"
 )
 
-var shutdown bool = false
-
-var Sessions SessionManager = SessionManager{
-	Lifetime: 12 * time.Hour,
-	Items:    map[string]*Session{},
-}
-
 type Session struct {
-	Expires       time.Time
-	Provider      *oidc.Provider
-	Config        *oauth2.Config
-	OIDCVerifier  *Verifier
-	OAuthCodeOpts []oauth2.AuthCodeOption
-	SamlMw        *samlsp.Middleware
-	SamlOpts      SamlOpts
-	State         string
-	CsrfToken     string
+	ID           string              `json:"id"`
+	Expires      time.Time           `json:"expires"`
+	Certificates []*cert.Certificate `json:"certificates"`
+
+	Provider      *oidc.Provider          `json:"-"`
+	Config        *oauth2.Config          `json:"-"`
+	OIDCVerifier  *Verifier               `json:"-"`
+	OAuthCodeOpts []oauth2.AuthCodeOption `json:"-"`
+	SamlMw        *samlsp.Middleware      `json:"-"`
+	SamlOpts      SamlOpts                `json:"-"`
+	State         string                  `json:"-"`
+	CsrfToken     string                  `json:"-"`
 }
 
 type SessionManager struct {
 	sync.Mutex
-	Lifetime time.Duration
-	Items    map[string]*Session
+	filePath string
+	Items    map[string]*Session `json:"sessions"`
 }
 
-func GetSession(r *http.Request) *Session {
-	c, err := r.Cookie(string(sessKey))
-	if err != nil {
-		return nil
+func (m *SessionManager) Save() error {
+	b, _ := json.MarshalIndent(m.Items, "", "  ")
+	return os.WriteFile(path.Clean(m.filePath), b, 0600)
+}
+
+func LoadSessionManager(filepath string) (*SessionManager, error) {
+	sm := &SessionManager{
+		filePath: filepath,
+		Mutex:    sync.Mutex{},
+		Items:    map[string]*Session{},
 	}
-	return Sessions.Get(c.Value)
+	b, err := os.ReadFile(path.Clean(filepath))
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	if err != nil && os.IsNotExist(err) {
+		return sm, nil
+	}
+	return sm, json.Unmarshal(b, &sm.Items)
 }
 
-func (m *SessionManager) Add(s *Session, hash string) {
+func (m *SessionManager) New() (*Session, error) {
 	m.Mutex.Lock()
-	m.Items[hash] = s
-	m.Mutex.Unlock()
-	fmt.Printf("%s Session added %s\n", time.Now(), hash)
+	defer m.Mutex.Unlock()
+	id := randomHash()
+	crt, err := cert.Generate("token-signer-"+id[:8], "IRBE", "CH", "IT", cfg.SessionLifetime.String())
+	if err != nil {
+		return nil, err
+	}
+	m.Items[id] = &Session{
+		ID:           id,
+		Expires:      time.Now().Add(cfg.SessionLifetime),
+		Certificates: []*cert.Certificate{},
+	}
+	m.Items[id].Certificates = append(m.Items[id].Certificates, crt)
+	return m.Items[id], nil
 }
 
 func (m *SessionManager) Remove(hash string) {
@@ -70,18 +95,32 @@ func (s *Session) Valid() bool {
 	return time.Now().Before(s.Expires)
 }
 
-func RunSessionCleanup() {
+func (m *SessionManager) RunSessionCleanup(shutdown <-chan struct{}, routines *sync.WaitGroup) {
+	routines.Add(1)
+	defer routines.Done()
+	t := time.NewTicker(30 * time.Second)
 	for {
-		if shutdown {
-			break
-		}
-		now := time.Now()
-		for h, s := range Sessions.Items {
-			if now.After(s.Expires) {
-				Sessions.Remove(h)
+		select {
+		case <-t.C:
+			now := time.Now()
+			for h, s := range m.Items {
+				if now.After(s.Expires) {
+					m.Remove(h)
+				}
 			}
+		case <-shutdown:
+			if err := m.Save(); err != nil {
+				fmt.Println(err)
+			}
+			return
 		}
-		time.Sleep(30 * time.Second)
 	}
+}
 
+func randomHash() string {
+	var b []byte = make([]byte, 32)
+	_, _ = rand.Read(b)
+	h := sha256.New()
+	h.Write(b)
+	return hex.EncodeToString(h.Sum(nil))
 }

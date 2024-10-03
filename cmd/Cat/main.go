@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/pheelee/Cat/internal/server"
-	"github.com/pheelee/Cat/pkg/cert"
 )
 
 func getEnvOrString(s string, d string) string {
@@ -25,29 +25,27 @@ func getEnvOrString(s string, d string) string {
 
 func main() {
 	var port int
+	var sessionHours int
 	var servercfg server.Config = server.Config{}
 	flag.IntVar(&port, "port", 8090, "[optional] Listening port")
 	flag.StringVar(&servercfg.StaticDir, "StaticDir", getEnvOrString("STATIC_DIR", ""), "[optional] set static dir to html/js/css files")
 	flag.StringVar(&servercfg.CookieSecret, "CookieSecret", getEnvOrString("COOKIE_SECRET", ""), "[mandatory] secret string to keep cookies safe")
+	flag.IntVar(&sessionHours, "SessionLifetime", 24*30, "[optional] session lifetime in hours (default 30 days)")
 	flag.Parse()
 
 	if servercfg.CookieSecret == "" {
 		flag.CommandLine.Usage()
 		os.Exit(0)
 	}
-	crt := &cert.Certificate{Name: "cat-tokensigner"}
-	err := crt.Load("./")
-	if err != nil || !time.Now().Before(crt.Cert.NotAfter) {
-		crt, err = cert.Generate("cat-tokensigner", "Cat", "CH", "IT", fmt.Sprintf("%dh", 24*180))
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := crt.Save("./"); err != nil {
-			log.Fatal(err)
-		}
+	servercfg.SessionLifetime = time.Duration(sessionHours) * time.Hour
+	sm, err := server.LoadSessionManager("./sessions.json")
+	if err != nil {
+		log.Fatal(err)
 	}
-	servercfg.Certificate = crt
-	app := server.SetupRoutes(&servercfg)
+	servercfg.SessionManager = sm
+	routines := sync.WaitGroup{}
+	shutdown := make(chan struct{})
+	app := server.SetupRoutes(&servercfg, shutdown, &routines)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -69,4 +67,7 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Println("ERROR: ", err)
 	}
+	log.Println("Stopping all goroutines and wait for them to finish")
+	shutdown <- struct{}{}
+	routines.Wait()
 }

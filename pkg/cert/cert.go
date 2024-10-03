@@ -7,7 +7,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -17,17 +17,9 @@ import (
 type Certificate struct {
 	Name       string            `json:"name"`
 	Cert       *x509.Certificate `json:"-"`
-	PrivteKey  *rsa.PrivateKey   `json:"-"`
+	PrivateKey *rsa.PrivateKey   `json:"-"`
 	CertPEM    []byte            `json:"certificate"`
 	PrivKeyPEM []byte            `json:"privateKey"`
-}
-
-func toBase64(in []byte, t string) []byte {
-	block := pem.Block{
-		Type:  t,
-		Bytes: in,
-	}
-	return pem.EncodeToMemory(&block)
 }
 
 func Generate(name string, org string, country string, ou string, expires string) (*Certificate, error) {
@@ -45,6 +37,7 @@ func Generate(name string, org string, country string, ou string, expires string
 			Organization:       []string{org},
 			Country:            []string{country},
 			OrganizationalUnit: []string{ou},
+			CommonName:         name,
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(expire),
@@ -64,10 +57,50 @@ func Generate(name string, org string, country string, ou string, expires string
 	return &Certificate{
 		Name:       name,
 		Cert:       crt,
-		PrivteKey:  priv,
-		CertPEM:    toBase64(cert, "CERTIFICATE"),
-		PrivKeyPEM: toBase64(x509.MarshalPKCS1PrivateKey(priv), "RSA PRIVATE KEY"),
+		PrivateKey: priv,
+		CertPEM:    pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: crt.Raw}),
 	}, nil
+}
+
+func (c *Certificate) MarshalJSON() ([]byte, error) {
+	type t Certificate
+	crt := t{
+		Name:       c.Name,
+		Cert:       c.Cert,
+		PrivateKey: c.PrivateKey,
+	}
+	crt.CertPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: crt.Cert.Raw})
+	crt.PrivKeyPEM = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(crt.PrivateKey)})
+	return json.Marshal(&crt)
+}
+
+func (c *Certificate) UnmarshalJSON(b []byte) error {
+	type t Certificate
+	var (
+		crt t
+		err error
+	)
+	if err := json.Unmarshal(b, &crt); err != nil {
+		return err
+	}
+	p, _ := pem.Decode(crt.CertPEM)
+	if p == nil {
+		return errors.New("failed to parse certificate PEM")
+	}
+	c.Cert, err = x509.ParseCertificate(p.Bytes)
+	if err != nil {
+		return err
+	}
+	c.CertPEM = crt.CertPEM
+	p, _ = pem.Decode(crt.PrivKeyPEM)
+	if p == nil {
+		return errors.New("failed to parse private key PEM")
+	}
+	c.PrivateKey, err = x509.ParsePKCS1PrivateKey(p.Bytes)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Certificate) Save(rootPath string) error {
@@ -80,18 +113,5 @@ func (c *Certificate) Load(rootPath string) error {
 	if err != nil {
 		return err
 	}
-	if err = json.Unmarshal(b, c); err != nil {
-		return err
-	}
-	pb, _ := pem.Decode(c.CertPEM)
-	if pb == nil {
-		return fmt.Errorf("failed to decode certificate")
-	}
-	c.Cert, err = x509.ParseCertificate(pb.Bytes)
-	if err != nil {
-		return err
-	}
-	pb, _ = pem.Decode(c.PrivKeyPEM)
-	c.PrivteKey, err = x509.ParsePKCS1PrivateKey(pb.Bytes)
-	return err
+	return json.Unmarshal(b, c)
 }
