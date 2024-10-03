@@ -1,3 +1,8 @@
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/pheelee/cat/build_image.yml)
+![GitHub Tag](https://img.shields.io/github/v/tag/pheelee/cat)
+[![Go Report Card](https://goreportcard.com/badge/github.com/pheelee/Cat)](https://goreportcard.com/report/github.com/pheelee/Cat)
+[![codecov](https://codecov.io/github/pheelee/cat/graph/badge.svg?token=C7E4XUTKNA)](https://codecov.io/github/pheelee/cat)
+
 # Cat - cloud authentication tester
 This little web project provides service providers to test OIDC and SAML authentication.
 
