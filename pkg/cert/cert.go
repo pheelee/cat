@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -12,14 +13,16 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Certificate struct {
-	Name       string            `json:"name"`
-	Cert       *x509.Certificate `json:"-"`
-	PrivateKey *rsa.PrivateKey   `json:"-"`
-	CertPEM    []byte            `json:"certificate"`
-	PrivKeyPEM []byte            `json:"privateKey"`
+	Name       string            `json:"name" yaml:"name"`
+	Cert       *x509.Certificate `json:"-" yaml:"-"`
+	PrivateKey *rsa.PrivateKey   `json:"-" yaml:"-"`
+	CertPEM    []byte            `json:"certificate" yaml:"certificate"`
+	PrivKeyPEM []byte            `json:"-" yaml:"privateKey"`
 }
 
 func Generate(name string, org string, country string, ou string, expires string) (*Certificate, error) {
@@ -62,28 +65,34 @@ func Generate(name string, org string, country string, ou string, expires string
 	}, nil
 }
 
-func (c *Certificate) MarshalJSON() ([]byte, error) {
-	type t Certificate
-	crt := t{
-		Name:       c.Name,
-		Cert:       c.Cert,
-		PrivateKey: c.PrivateKey,
-	}
-	crt.CertPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: crt.Cert.Raw})
-	crt.PrivKeyPEM = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(crt.PrivateKey)})
-	return json.Marshal(&crt)
+func (c *Certificate) MarshalYAML() (interface{}, error) {
+	return map[string]interface{}{
+		"name":        c.Name,
+		"certificate": base64.RawStdEncoding.EncodeToString(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Cert.Raw})),
+		"privateKey":  base64.RawStdEncoding.EncodeToString(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(c.PrivateKey)})),
+	}, nil
 }
 
-func (c *Certificate) UnmarshalJSON(b []byte) error {
-	type t Certificate
-	var (
-		crt t
-		err error
-	)
-	if err := json.Unmarshal(b, &crt); err != nil {
+func (c *Certificate) UnmarshalYAML(value *yaml.Node) error {
+	var err error
+	var temp struct {
+		Name       string `yaml:"name"`
+		CertPEM    string `yaml:"certificate"`
+		PrivKeyPEM string `yaml:"privateKey"`
+	}
+
+	if err := value.Decode(&temp); err != nil {
 		return err
 	}
-	p, _ := pem.Decode(crt.CertPEM)
+
+	c.Name = temp.Name
+	if c.CertPEM, err = base64.RawStdEncoding.DecodeString(temp.CertPEM); err != nil {
+		return err
+	}
+	if c.PrivKeyPEM, err = base64.RawStdEncoding.DecodeString(temp.PrivKeyPEM); err != nil {
+		return err
+	}
+	p, _ := pem.Decode(c.CertPEM)
 	if p == nil {
 		return errors.New("failed to parse certificate PEM")
 	}
@@ -91,8 +100,7 @@ func (c *Certificate) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	c.CertPEM = crt.CertPEM
-	p, _ = pem.Decode(crt.PrivKeyPEM)
+	p, _ = pem.Decode(c.PrivKeyPEM)
 	if p == nil {
 		return errors.New("failed to parse private key PEM")
 	}
@@ -100,6 +108,7 @@ func (c *Certificate) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+	c.PrivKeyPEM = []byte{}
 	return nil
 }
 

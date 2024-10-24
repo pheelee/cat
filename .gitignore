@@ -2,3 +2,5 @@
 cmd/Cat/*.json
 __debug_bin*
 /dist
+.yarn
+session.yaml

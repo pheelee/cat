@@ -2,72 +2,98 @@ package main
 
 import (
 	"context"
-	"flag"
-	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
+	"strconv"
 	"syscall"
 	"time"
 
-	"github.com/pheelee/Cat/internal/server"
+	"github.com/pheelee/Cat/internal/session"
+	"github.com/pheelee/Cat/internal/web"
+	"github.com/rs/zerolog"
+	"github.com/urfave/cli/v2"
 )
 
-func getEnvOrString(s string, d string) string {
-	a := os.Getenv(s)
-	if a == "" {
-		return d
-	}
-	return a
-}
+var VERSION string = "0.0.0"
 
 func main() {
-	var port int
-	var sessionHours int
-	var servercfg server.Config = server.Config{}
-	flag.IntVar(&port, "port", 8090, "[optional] Listening port")
-	flag.StringVar(&servercfg.StaticDir, "StaticDir", getEnvOrString("STATIC_DIR", ""), "[optional] set static dir to html/js/css files")
-	flag.StringVar(&servercfg.CookieSecret, "CookieSecret", getEnvOrString("COOKIE_SECRET", ""), "[mandatory] secret string to keep cookies safe")
-	flag.IntVar(&sessionHours, "SessionLifetime", 24*30, "[optional] session lifetime in hours (default 30 days)")
-	flag.Parse()
-
-	if servercfg.CookieSecret == "" {
-		flag.CommandLine.Usage()
-		os.Exit(0)
-	}
-	servercfg.SessionLifetime = time.Duration(sessionHours) * time.Hour
-	sm, err := server.LoadSessionManager("./sessions.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	servercfg.SessionManager = sm
-	routines := sync.WaitGroup{}
-	shutdown := make(chan struct{})
-	app := server.SetupRoutes(&servercfg, shutdown, &routines)
-
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	srv := http.Server{
-		Addr:              fmt.Sprintf(":%d", port),
-		Handler:           app,
-		ReadHeaderTimeout: time.Second * 60,
-	}
-	go func(srv *http.Server) {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Println("ERROR: ", err)
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+		short := file
+		for i := len(file) - 1; i > 0; i-- {
+			if file[i] == '/' {
+				short = file[i+1:]
+				break
+			}
 		}
-	}(&srv)
-	log.Println("Listening on port", port)
-	<-sig
-	log.Println("Shutting down webserver")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer func() { cancel() }()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Println("ERROR: ", err)
+		file = short
+		return file + ":" + strconv.Itoa(line)
 	}
-	log.Println("Stopping all goroutines and wait for them to finish")
-	shutdown <- struct{}{}
-	routines.Wait()
+	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
+	logger := zerolog.New(output).With().Caller().Timestamp().Logger()
+
+	app := cli.App{
+		Name:        "cat",
+		Usage:       "cloud authentication tester",
+		Description: "A modern authentication testing tool.",
+		Version:     VERSION,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "CookieSecret",
+				Aliases:  []string{"s"},
+				Usage:    "secret to encode cookies",
+				EnvVars:  []string{"COOKIE_SECRET"},
+				Required: true,
+			},
+			&cli.IntFlag{
+				Name:    "Port",
+				Aliases: []string{"p"},
+				Usage:   "listening port",
+				Value:   8090,
+			},
+			&cli.IntFlag{
+				Name:    "SessionLifetime",
+				Aliases: []string{"l"},
+				Usage:   "session lifetime in hours",
+				Value:   24 * 30,
+			},
+		},
+		Action: func(ctx *cli.Context) error {
+			sm, err := session.NewManager(logger, time.Duration(ctx.Int("SessionLifetime"))*time.Hour, "./session.yaml")
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sm.OnAppShutdown(); err != nil {
+					logger.Error().Err(err).Msg("failed to shutdown")
+				}
+			}()
+			app := web.GetRouter(logger, time.Duration(ctx.Int("SessionLifetime")), sm.Middleware)
+			sig := make(chan os.Signal, 1)
+			signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+			srv := http.Server{
+				Addr:              ":" + strconv.Itoa(ctx.Int("Port")),
+				Handler:           app,
+				ReadHeaderTimeout: 5 * time.Second,
+			}
+			go func(srv *http.Server) {
+				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					logger.Error().Err(err).Msg("failed to listen and serve")
+				}
+			}(&srv)
+			logger.Info().Int("port", ctx.Int("Port")).Msg("server started")
+			<-sig
+			logger.Info().Msg("shutting down server")
+			sctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			defer func() { cancel() }()
+			if err := srv.Shutdown(sctx); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+
+	if err := app.Run(os.Args); err != nil {
+		logger.Error().Err(err).Msg("failed to run")
+	}
 }
