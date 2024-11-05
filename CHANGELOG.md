@@ -1,3 +1,9 @@
+## v0.2.4 (2024-10-24)
+
+### Refactor
+
+- switch to vuetify frontend
+
 ## v0.2.3 (2024-09-23)
 
 ### Fix
