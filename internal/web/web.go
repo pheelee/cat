@@ -213,9 +213,24 @@ func putOidcConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.OIDCConfig.MetadataUrl != "" {
-		// Ensure well known part is removed
-		s.OIDCConfig.MetadataUrl = strings.TrimSuffix(s.OIDCConfig.MetadataUrl, "/.well-known/openid-configuration")
-		if s.OIDCClient.Provider, err = oidc.NewProvider(context.Background(), s.OIDCConfig.MetadataUrl); err != nil {
+		// We read the issuer from the metadata document and use that to setup the oidc provider
+		res, err := http.Get(s.OIDCConfig.MetadataUrl)
+		if err != nil {
+			logger.Error().Err(err).Msg("get oidc metadata error")
+			jsonError(w, http.StatusBadRequest, err)
+			return
+		}
+		defer res.Body.Close()
+		type Metadata struct {
+			Issuer string `json:"issuer"`
+		}
+		var metadata Metadata
+		if err := json.NewDecoder(res.Body).Decode(&metadata); err != nil {
+			logger.Error().Err(err).Msg("decode oidc metadata error")
+			jsonError(w, http.StatusBadRequest, err)
+			return
+		}
+		if s.OIDCClient.Provider, err = oidc.NewProvider(context.Background(), metadata.Issuer); err != nil {
 			logger.Error().Err(err).Msg("new oidc provider error")
 			jsonError(w, http.StatusBadRequest, err)
 			return
