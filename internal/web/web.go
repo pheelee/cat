@@ -331,7 +331,10 @@ func oidcCallback(w http.ResponseWriter, r *http.Request) {
 		}
 		s.OIDCConfig.Tokens = session.Tokens{
 			AccessToken: t.AccessToken,
-			IDToken:     t.Extra("id_token").(string),
+		}
+		// Do we have an access token?
+		if t.Extra("id_token") != nil {
+			s.OIDCConfig.Tokens.IDToken = t.Extra("id_token").(string)
 		}
 	} else {
 		// Implicit flow
