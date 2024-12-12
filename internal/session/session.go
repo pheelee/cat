@@ -75,6 +75,7 @@ type sessionConfig struct {
 type Session struct {
 	ID         string             `json:"id" yaml:"id"`
 	Shared     bool               `json:"shared" yaml:"shared"`
+	JIT        JIT                `json:"jit" yaml:"jit"`
 	Expires    time.Time          `json:"expires" yaml:"expires"`
 	SAMLConfig SamlParams         `json:"saml,omitempty" yaml:"saml,omitempty"`
 	OIDCConfig OidcParams         `json:"oidc,omitempty" yaml:"oidc,omitempty"`
@@ -152,6 +153,7 @@ func (s *sessionManager) New(ip string, sessId string) (*Session, error) {
 	s.Sessions[sessId[:8]] = &Session{
 		ID:      sessId,
 		Shared:  sharedSession,
+		JIT:     JIT{Config: JITConfig{Enabled: true}},
 		Expires: expiration,
 		SAMLConfig: SamlParams{
 			IdpUrl:             "",

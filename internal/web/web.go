@@ -182,6 +182,15 @@ func samlCallback(w http.ResponseWriter, r *http.Request) {
 	m.Lock()
 	tokenResponse[id] = &tokens{SAMLAssertion: assertion}
 	m.Unlock()
+	if s.JIT.Config.Enabled {
+		if err := s.JIT.AddOrUpdateUserFromSAMLAssertion(assertion.(samlsp.JWTSessionClaims)); err != nil {
+			logger.Error().Err(err).Msg("add user from saml assertion error")
+			s.SAMLConfig.ErrorResponse.Error = "JIT provisioning failed: could not parse jwt token"
+			s.SAMLConfig.ErrorResponse.Description = err.Error()
+			http.Redirect(w, r, "/saml?step=3", http.StatusSeeOther)
+			return
+		}
+	}
 	// Set cookie to retrieve the SAML assertion
 	ssite := http.SameSiteDefaultMode
 	if r.Header.Get("X-Forwarded-Proto") == "https" {
@@ -197,6 +206,7 @@ func samlCallback(w http.ResponseWriter, r *http.Request) {
 		Domain:   r.URL.Host,
 		SameSite: ssite,
 	})
+	_ = s.SAMLSP.Session.DeleteSession(w, r)
 	http.Redirect(w, r, "/saml?step=3", http.StatusSeeOther)
 }
 
@@ -397,6 +407,22 @@ func oidcCallback(w http.ResponseWriter, r *http.Request) {
 		SameSite: ssite,
 	})
 
+	if s.JIT.Config.Enabled {
+		if tokens.IDToken != "" {
+			if err := s.JIT.AddOrUpdateUserFromJWTToken(tokens.IDToken); err != nil {
+				logger.Error().Err(err).Msg("add or update user from jwt token error")
+				s.OIDCConfig.ErrorResponse.Error = "JIT provisioning failed: could not parse jwt token"
+				s.OIDCConfig.ErrorResponse.Description = err.Error()
+			}
+		} else {
+			if err := s.JIT.AddOrUpdateUserFromJWTToken(tokens.AccessToken); err != nil {
+				logger.Error().Err(err).Msg("add or update user from jwt token error")
+				s.OIDCConfig.ErrorResponse.Error = "JIT provisioning failed: could not parse jwt token"
+				s.OIDCConfig.ErrorResponse.Description = err.Error()
+			}
+		}
+	}
+
 	http.Redirect(w, r, "/oidc?step=1", http.StatusSeeOther)
 }
 
@@ -452,6 +478,30 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 			r.Put("/", putOidcConfig)
 			r.Post("/start", oidcStart)
 			r.Post("/{id}/callback", oidcCallback)
+		})
+		r.Route("/jit", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				s := r.Context().Value(session.SessionKey).(*session.Session)
+				jsonResponse(w, s.JIT.Config)
+			})
+			r.Get("/users", func(w http.ResponseWriter, r *http.Request) {
+				s := r.Context().Value(session.SessionKey).(*session.Session)
+				jsonResponse(w, s.JIT.Users)
+			})
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				s := r.Context().Value(session.SessionKey).(*session.Session)
+				// Decode body into JIT config
+				var config session.JITConfig
+				err := json.NewDecoder(r.Body).Decode(&config)
+				if err != nil {
+					logger.Error().Err(err).Msg("decode JIT config error")
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				// Set JIT config
+				s.JIT.Config = config
+				w.WriteHeader(http.StatusNoContent)
+			})
 		})
 
 	})
