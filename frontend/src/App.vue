@@ -80,7 +80,7 @@
       <v-row justify="center" no-gutters>
         <v-col class="mt-4 text-center">
           &copy; 2021 - {{ new Date().getFullYear() }} Philipp Ritter - {{ version }} - made
-          with ❤️ and ☕
+          with ❤️ and ☕ <v-btn variant="text" :href="`https://github.com/pheelee/cat`" target="_blank" icon="mdi-github"></v-btn>
         </v-col>
       </v-row>
     </v-footer>
