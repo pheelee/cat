@@ -1,14 +1,3 @@
-## v0.3.0 (2024-12-12)
-
-### Feat
-
-- add shared session mode for better persistence and collaboration with others
-
-### Fix
-
-- add github link to footer
-- oidc callback for oauth2 has no id_token
-
 ## v0.2.5 (2024-11-05)
 
 ### Fix
