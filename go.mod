@@ -5,8 +5,6 @@ go 1.21.0
 toolchain go1.21.6
 
 require (
-	github.com/go-xmlfmt/xmlfmt v1.1.2
-	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.4
 	golang.org/x/oauth2 v0.23.0
