@@ -33,19 +33,18 @@ type errorResponse struct {
 }
 
 type SamlParams struct {
-	IdpUrl             string         `json:"idp_url" yaml:"idp_url"`
-	SPEntityID         string         `json:"sp_entity_id" yaml:"sp_entity_id"`
-	SPMetadataUrl      string         `json:"sp_metadata_url" yaml:"sp_metadata_url"`
-	IdpMetadata        string         `json:"idp_metadata" yaml:"idp_metadata"`
-	RequestSigning     bool           `json:"request_signing" yaml:"request_signing"`
-	RequestSigningAlgo string         `json:"request_signing_algo" yaml:"request_signing_algo"`
-	AddEncryptionCert  bool           `json:"add_encryption_cert" yaml:"add_encryption_cert"`
-	AllowIdpInitiated  bool           `json:"allow_idp_initiated" yaml:"allow_idp_initiated"`
-	NameIdFormat       string         `json:"name_id_format" yaml:"name_id_format"`
-	Certificates       certificates   `json:"certificates" yaml:"certificates"`
-	ActiveCert         string         `json:"active_cert" yaml:"active_cert"`
-	Assertion          samlsp.Session `json:"saml_assertion" yaml:"-"`
-	ErrorResponse      errorResponse  `json:"error_response" yaml:"-"`
+	IdpUrl             string        `json:"idp_url" yaml:"idp_url"`
+	SPEntityID         string        `json:"sp_entity_id" yaml:"sp_entity_id"`
+	SPMetadataUrl      string        `json:"sp_metadata_url" yaml:"sp_metadata_url"`
+	IdpMetadata        string        `json:"idp_metadata" yaml:"idp_metadata"`
+	RequestSigning     bool          `json:"request_signing" yaml:"request_signing"`
+	RequestSigningAlgo string        `json:"request_signing_algo" yaml:"request_signing_algo"`
+	AddEncryptionCert  bool          `json:"add_encryption_cert" yaml:"add_encryption_cert"`
+	AllowIdpInitiated  bool          `json:"allow_idp_initiated" yaml:"allow_idp_initiated"`
+	NameIdFormat       string        `json:"name_id_format" yaml:"name_id_format"`
+	Certificates       certificates  `json:"certificates" yaml:"certificates"`
+	ActiveCert         string        `json:"active_cert" yaml:"active_cert"`
+	ErrorResponse      errorResponse `json:"error_response" yaml:"-"`
 }
 
 type OidcParams struct {
@@ -58,13 +57,7 @@ type OidcParams struct {
 	Secret        string        `json:"secret" yaml:"secret"`
 	RedirectURI   string        `json:"redirect_uri" yaml:"redirect_uri"`
 	Scopes        []string      `json:"scopes" yaml:"scopes"`
-	Tokens        Tokens        `json:"tokens" yaml:"tokens"`
 	ErrorResponse errorResponse `json:"error_response" yaml:"-"`
-}
-
-type Tokens struct {
-	AccessToken string `json:"access_token" yaml:"access_token"`
-	IDToken     string `json:"id_token" yaml:"id_token"`
 }
 
 type responseType struct {
@@ -81,6 +74,7 @@ type sessionConfig struct {
 
 type Session struct {
 	ID         string             `json:"id" yaml:"id"`
+	Shared     bool               `json:"shared" yaml:"shared"`
 	Expires    time.Time          `json:"expires" yaml:"expires"`
 	SAMLConfig SamlParams         `json:"saml,omitempty" yaml:"saml,omitempty"`
 	OIDCConfig OidcParams         `json:"oidc,omitempty" yaml:"oidc,omitempty"`
@@ -136,10 +130,15 @@ func NewManager(logger zerolog.Logger, expiration time.Duration, filePath string
 // and sets its expiration time to the current time plus the session
 // manager's expiration duration. The new session is stored in the session
 // manager's map of active sessions and returned.
-func (s *sessionManager) New(ip string) (*Session, error) {
-	var id = make([]byte, 16)
-	_, _ = rand.Read(id)
-	sessId := hex.EncodeToString(id)
+func (s *sessionManager) New(ip string, sessId string) (*Session, error) {
+	sharedSession := sessId != ""
+	expiration := time.Now().Add(time.Hour * 24 * 365)
+	if sessId == "" {
+		var id = make([]byte, 16)
+		_, _ = rand.Read(id)
+		sessId = hex.EncodeToString(id)
+		expiration = time.Now().Add(s.Config.Expiration)
+	}
 	primaryCert, err := cert.Generate("cat-tokensigner-"+sessId[:8]+"-primary", "IRBE", "CH", "IT", s.Config.Expiration.String())
 	if err != nil {
 		s.Config.logger.Error().Err(err).Msg("failed to generate primary certificate")
@@ -152,7 +151,8 @@ func (s *sessionManager) New(ip string) (*Session, error) {
 	}
 	s.Sessions[sessId[:8]] = &Session{
 		ID:      sessId,
-		Expires: time.Now().Add(s.Config.Expiration),
+		Shared:  sharedSession,
+		Expires: expiration,
 		SAMLConfig: SamlParams{
 			IdpUrl:             "",
 			IdpMetadata:        "",
@@ -235,6 +235,47 @@ func (s sessionManager) Middleware(next http.Handler) http.Handler {
 				return
 			}
 		}
+		ssite := http.SameSiteDefaultMode
+		if r.Header.Get("X-Forwarded-Proto") == "https" {
+			ssite = http.SameSiteNoneMode
+		}
+		initiateSharedSession := strings.HasPrefix(r.URL.Path, "/shared/")
+		// check if we have a shared session and return that if present
+		if initiateSharedSession {
+			se := s.Get(strings.Split(r.URL.Path, "/")[2])
+			if se == nil || !se.Valid() {
+				var err error
+				s.Config.logger.Warn().Str("id", strings.Split(r.URL.Path, "/")[2]).Str("path", r.URL.Path).Msg("create new shared session")
+				se, err = s.New(r.RemoteAddr, strings.Split(r.URL.Path, "/")[2])
+				if err != nil {
+					s.Config.logger.Error().Err(err).Msg("failed to create shared session")
+					// TODO: present a beautiful error page
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+			}
+			// Check if cookie is present otherwise create one
+			c, err := r.Cookie(string(SessionKey))
+			if err != nil || c.Value != se.ID {
+				http.SetCookie(w, &http.Cookie{
+					Name:     string(SessionKey),
+					Value:    se.ID,
+					Path:     "/",
+					Expires:  se.Expires,
+					HttpOnly: true,
+					Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
+					Domain:   r.URL.Host,
+					SameSite: ssite,
+				})
+			}
+			// Convert to shared session
+			if !se.Shared {
+				se.Shared = true
+				se.Expires = time.Now().Add(time.Hour * 24 * 365)
+			}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), SessionKey, se)))
+			return
+		}
 		c, _ := r.Cookie(string(SessionKey))
 		if c != nil {
 			if se := s.Get(c.Value); se != nil && se.Valid() {
@@ -247,15 +288,11 @@ func (s sessionManager) Middleware(next http.Handler) http.Handler {
 		if ip == "" {
 			ip = strings.Split(r.RemoteAddr, ":")[0]
 		}
-		se, err := s.New(ip)
+		se, err := s.New(ip, "")
 		if err != nil {
 			s.Config.logger.Error().Err(err).Msg("failed to create session")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
-		}
-		ssite := http.SameSiteDefaultMode
-		if r.Header.Get("X-Forwarded-Proto") == "https" {
-			ssite = http.SameSiteNoneMode
 		}
 		c = &http.Cookie{
 			Name:     string(SessionKey),

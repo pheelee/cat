@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -27,10 +28,19 @@ import (
 var assets embed.FS
 
 var logger zerolog.Logger
+var tokenResponse map[string]*tokens = map[string]*tokens{}
+var m sync.Mutex = sync.Mutex{}
 
 type userInfo struct {
-	ID      string    `json:"id"`
-	Expires time.Time `json:"expires"`
+	ID            string    `json:"id"`
+	SharedSession bool      `json:"shared_session"`
+	Expires       time.Time `json:"expires"`
+}
+
+type tokens struct {
+	AccessToken   string         `json:"access_token"`
+	IDToken       string         `json:"id_token"`
+	SAMLAssertion samlsp.Session `json:"saml_assertion"`
 }
 
 func jsonResponse(w http.ResponseWriter, data interface{}) {
@@ -49,8 +59,9 @@ func jsonError(w http.ResponseWriter, status int, err error) {
 func userinfo(w http.ResponseWriter, r *http.Request) {
 	s := r.Context().Value(session.SessionKey).(*session.Session)
 	jsonResponse(w, userInfo{
-		ID:      s.ID[:8],
-		Expires: s.Expires,
+		ID:            s.ID[:8],
+		SharedSession: s.Shared,
+		Expires:       s.Expires,
 	})
 }
 
@@ -73,7 +84,13 @@ func getSamlConfig(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		origin := referrerHost(r)
+		s.SAMLConfig.SPEntityID = origin + "/" + s.ID[:8]
 		s.SAMLConfig.SPMetadataUrl = origin + "/api/saml/" + s.ID[:8] + "/metadata"
+		s.SAMLSP.ServiceProvider.EntityID = s.SAMLConfig.SPEntityID
+		u, _ := url.Parse(origin + "/api/saml/" + s.ID[:8] + "/acs")
+		s.SAMLSP.ServiceProvider.AcsURL = *u
+		u, _ = url.Parse(origin + "/api/saml/" + s.ID[:8] + "/slo")
+		s.SAMLSP.ServiceProvider.SloURL = *u
 		s.SAMLConfig.NameIdFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
 	}
 	jsonResponse(w, s.SAMLConfig)
@@ -156,10 +173,30 @@ func samlCallback(w http.ResponseWriter, r *http.Request) {
 	var err error
 	// After the assertion was consumed, the user is redirected back here
 	s := r.Context().Value(session.SessionKey).(*session.Session)
-	if s.SAMLConfig.Assertion, err = s.SAMLSP.Session.GetSession(r); err != nil {
+	assertion, err := s.SAMLSP.Session.GetSession(r)
+	if err != nil {
 		s.SAMLSP.HandleStartAuthFlow(w, r)
 		return
 	}
+	id := randomString(32)
+	m.Lock()
+	tokenResponse[id] = &tokens{SAMLAssertion: assertion}
+	m.Unlock()
+	// Set cookie to retrieve the SAML assertion
+	ssite := http.SameSiteDefaultMode
+	if r.Header.Get("X-Forwarded-Proto") == "https" {
+		ssite = http.SameSiteNoneMode
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "tokens",
+		Value:    id,
+		Path:     "/",
+		Expires:  time.Now().Add(1 * time.Minute),
+		HttpOnly: true,
+		Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
+		Domain:   r.URL.Host,
+		SameSite: ssite,
+	})
 	http.Redirect(w, r, "/saml?step=3", http.StatusSeeOther)
 }
 
@@ -214,6 +251,9 @@ func putOidcConfig(w http.ResponseWriter, r *http.Request) {
 
 	if s.OIDCConfig.MetadataUrl != "" {
 		// We read the issuer from the metadata document and use that to setup the oidc provider
+		if !strings.HasSuffix(s.OIDCConfig.MetadataUrl, "/.well-known/openid-configuration") {
+			s.OIDCConfig.MetadataUrl += "/.well-known/openid-configuration"
+		}
 		res, err := http.Get(s.OIDCConfig.MetadataUrl)
 		if err != nil {
 			logger.Error().Err(err).Msg("get oidc metadata error")
@@ -276,8 +316,6 @@ func oidcStart(w http.ResponseWriter, r *http.Request) {
 }
 func oidcCallback(w http.ResponseWriter, r *http.Request) {
 	s := r.Context().Value(session.SessionKey).(*session.Session)
-	// Empty tokens
-	s.OIDCConfig.Tokens = session.Tokens{}
 	if err := r.ParseForm(); err != nil {
 		logger.Error().Err(err).Msg("parse form error")
 		s.OIDCConfig.ErrorResponse.Error = err.Error()
@@ -313,6 +351,7 @@ func oidcCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tokens := tokens{}
 	if r.Form.Get("code") != "" {
 		// Authorization code flow
 
@@ -329,21 +368,50 @@ func oidcCallback(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/oidc?step=1", http.StatusSeeOther)
 			return
 		}
-		s.OIDCConfig.Tokens = session.Tokens{
-			AccessToken: t.AccessToken,
-		}
-		// Do we have an access token?
+		tokens.AccessToken = t.AccessToken
+		// Do we have an id token?
 		if t.Extra("id_token") != nil {
-			s.OIDCConfig.Tokens.IDToken = t.Extra("id_token").(string)
+			tokens.IDToken = t.Extra("id_token").(string)
 		}
 	} else {
 		// Implicit flow
-		s.OIDCConfig.Tokens = session.Tokens{
-			AccessToken: r.Form.Get("access_token"),
-			IDToken:     r.Form.Get("id_token"),
-		}
+		tokens.AccessToken = r.Form.Get("access_token")
+		tokens.IDToken = r.Form.Get("id_token")
 	}
+	var id string = randomString(32)
+	ssite := http.SameSiteDefaultMode
+	if r.Header.Get("X-Forwarded-Proto") == "https" {
+		ssite = http.SameSiteNoneMode
+	}
+	m.Lock()
+	tokenResponse[id] = &tokens
+	m.Unlock()
+	http.SetCookie(w, &http.Cookie{
+		Name:     "tokens",
+		Value:    id,
+		Path:     "/",
+		Expires:  time.Now().Add(1 * time.Minute),
+		HttpOnly: true,
+		Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
+		Domain:   r.URL.Host,
+		SameSite: ssite,
+	})
+
 	http.Redirect(w, r, "/oidc?step=1", http.StatusSeeOther)
+}
+
+func getTokens(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("tokens")
+	if err != nil || c == nil {
+		jsonResponse(w, tokens{})
+		return
+	}
+	logger.Debug().Str("tokens", c.Value).Msg("user get tokens")
+	jsonResponse(w, tokenResponse[c.Value])
+	m.Lock()
+	delete(tokenResponse, c.Value)
+	logger.Debug().Str("tokens", c.Value).Msg("delete tokens")
+	m.Unlock()
 }
 
 func randomString(n int) string {
@@ -364,8 +432,14 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 	logger = log
 	r := chi.NewRouter()
 	r.Use(middlewares...)
+	r.Route("/shared/{id}", func(r chi.Router) {
+		r.Get("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+		}))
+	})
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/userinfo", userinfo)
+		r.Get("/tokens", getTokens)
 		r.Route("/saml", func(r chi.Router) {
 			r.Get("/", getSamlConfig)
 			r.Put("/", putSamlConfig)

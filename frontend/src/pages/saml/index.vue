@@ -97,25 +97,25 @@
                     </v-row>
                     <v-row>
                         <v-col cols="12">
-                            <v-card v-if="samlConfig.saml_assertion" variant="tonal">
+                            <v-card v-if="samlAssertion" variant="tonal">
                                 <v-card-title>SAML Assertion</v-card-title>
                                 <v-card-text>
                                     <v-container>
                                     <v-row>
                                         <v-col cols="6" md="3" class="bg-blue-darken-3">Subject</v-col>
-                                        <v-col cols="6" md="9">{{ samlConfig.saml_assertion.sub }}</v-col>
+                                        <v-col cols="6" md="9">{{ samlAssertion.sub }}</v-col>
                                         <v-col cols="6" md="3" class="bg-blue-darken-3">Issuer</v-col>
-                                        <v-col cols="6" md="9">{{ samlConfig.saml_assertion.iss }}</v-col>
+                                        <v-col cols="6" md="9">{{ samlAssertion.iss }}</v-col>
                                         <v-col cols="6" md="3" class="bg-blue-darken-3">Audience</v-col>
-                                        <v-col cols="6" md="9">{{ samlConfig.saml_assertion.aud }}</v-col>
+                                        <v-col cols="6" md="9">{{ samlAssertion.aud }}</v-col>
                                         <v-col cols="6" md="3" class="bg-blue-darken-3">Issued at</v-col>
-                                        <v-col cols="6" md="9">{{ new Date(samlConfig.saml_assertion.iat*1000).toLocaleString() }}</v-col>
+                                        <v-col cols="6" md="9">{{ new Date(samlAssertion.iat*1000).toLocaleString() }}</v-col>
                                         <v-col cols="6" md="3" class="bg-blue-darken-3">Not before</v-col>
-                                        <v-col cols="6" md="9">{{ new Date(samlConfig.saml_assertion.nbf*1000).toLocaleString() }}</v-col>
+                                        <v-col cols="6" md="9">{{ new Date(samlAssertion.nbf*1000).toLocaleString() }}</v-col>
                                         <v-col cols="6" md="3" class="bg-blue-darken-3">Expires</v-col>
-                                        <v-col cols="6" md="9">{{ new Date(samlConfig.saml_assertion.exp*1000).toLocaleString() }}</v-col>
+                                        <v-col cols="6" md="9">{{ new Date(samlAssertion.exp*1000).toLocaleString() }}</v-col>
                                         <v-col cols="12" class="bg-blue-darken-4" style="margin-top: 10px">Claims</v-col>
-                                        <template :key="k" v-for="(v, k) in samlConfig.saml_assertion.attr">
+                                        <template :key="k" v-for="(v, k) in samlAssertion.attr">
                                             <v-col cols="6" class="bg-grey-darken-3">{{k}}</v-col>
                                             <v-col cols="6">{{v.join("\n")}}</v-col>
                                         </template>
@@ -136,8 +136,9 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import { useDisplay } from 'vuetify';
-import samlApi, { SAMLConfig } from '@/api/samlApi';
+import samlApi, { SAMLAssertion, SAMLConfig } from '@/api/samlApi';
 import { store } from '@/components/store';
+import api, { Tokens } from '@/api/api';
 
 const snackbar = ref(false);
 const snackcolor = ref('success');
@@ -146,6 +147,7 @@ const snackText = ref('');
 const updating = ref(true);
 
 const { mdAndUp } = useDisplay()
+const samlAssertion = ref<SAMLAssertion|undefined>(undefined)
 const samlConfig = ref<SAMLConfig>({
     idp_url: '',
     sp_entity_id: '',
@@ -159,15 +161,6 @@ const samlConfig = ref<SAMLConfig>({
     certificates: {
         primary: { name: '', certificate: '' },
         secondary: { name: '', certificate: '' }
-    },
-    saml_assertion: {
-        sub: '',
-        iss: '',
-        aud: '',
-        iat: 0,
-        nbf: 0,
-        exp: 0,
-        attr: {}
     },
     error_response: {
         error: '',
@@ -255,10 +248,13 @@ const fetchConfig = () => {
     updating.value = true
     samlApi.get().then((config: SAMLConfig) => {
         updating.value = false
-        if (config.sp_entity_id == "") {
-            config.sp_entity_id = "https://" + window.location.hostname + "/" + store.userinfo.id
-        }
+        // if (config.sp_entity_id == "") {
+        //     config.sp_entity_id = "https://" + window.location.hostname + "/" + store.userinfo.id
+        // }
         samlConfig.value = config
+        api.getTokens().then((data: Tokens) => {
+            samlAssertion.value = data.saml_assertion
+        })
     }).catch((error) => {
         snackText.value = error
         snackcolor.value = 'error'

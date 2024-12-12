@@ -9,14 +9,9 @@ export type OIDCConfig = {
     secret: string,
     redirect_uri: string,
     scopes: string[],
-    tokens: Tokens,
     error_response: ErrorResponse
 }
 
-export type Tokens = {
-    access_token: string,
-    id_token: string
-}
 
 export type ResponseType = {
     code: boolean,

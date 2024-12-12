@@ -14,7 +14,6 @@ export type SAMLConfig = {
         primary: certificate
         secondary: certificate
     }
-    saml_assertion: SAMLAssertion
     error_response: ErrorResponse
 }
 

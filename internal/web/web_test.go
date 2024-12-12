@@ -79,7 +79,7 @@ func TestUserInfo(t *testing.T) {
 func TestGetSamlConfig(t *testing.T) {
 	sm, err := session.NewManager(zerolog.Nop(), time.Hour, "/tmp/session.yaml")
 	require.NoError(t, err)
-	s, err := sm.New("1.2.3.4")
+	s, err := sm.New("1.2.3.4", "")
 	require.NoError(t, err)
 	s.SAMLConfig.SPEntityID = "testSP"
 	require.Nil(t, err)
@@ -97,7 +97,7 @@ func TestGetSamlConfig(t *testing.T) {
 func TestPutSamlConfig(t *testing.T) {
 	sm, err := session.NewManager(zerolog.Nop(), time.Hour, "/tmp/session.yaml")
 	require.NoError(t, err)
-	s, err := sm.New("1.2.3.4")
+	s, err := sm.New("1.2.3.4", "")
 	require.NoError(t, err)
 	s.SAMLConfig.SPEntityID = "testSP"
 	require.Nil(t, err)

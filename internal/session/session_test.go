@@ -46,7 +46,7 @@ func TestNewSession(t *testing.T) {
 	sm, err := NewManager(zerolog.Nop(), time.Hour, "/tmp/session.yaml")
 	require.NoError(t, err)
 	require.NotNil(t, sm)
-	s, _ := sm.New("1.2.3.4")
+	s, _ := sm.New("1.2.3.4", "")
 	require.NotNil(t, s)
 	assert.Len(t, sm.Sessions, 1)
 	assert.Equal(t, s.ID, sm.Sessions[s.ID[:8]].ID)
@@ -117,4 +117,9 @@ func TestMiddleware(t *testing.T) {
 	req, res = httptest.NewRequest("GET", "/api/saml/testtes2/metadata", nil), httptest.NewRecorder()
 	sm.Middleware(next).ServeHTTP(res, req)
 	assert.Equal(t, http.StatusNotFound, res.Code)
+
+	// Test shared session
+	req, res = httptest.NewRequest("GET", "/shared/testtset", nil), httptest.NewRecorder()
+	sm.Middleware(next).ServeHTTP(res, req)
+	assert.Equal(t, http.StatusOK, res.Code)
 }
