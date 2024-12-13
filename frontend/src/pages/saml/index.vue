@@ -117,7 +117,7 @@
                                         <v-col cols="12" class="bg-blue-darken-4" style="margin-top: 10px">Claims</v-col>
                                         <template :key="k" v-for="(v, k) in samlAssertion.attr">
                                             <v-col cols="6" class="bg-grey-darken-3">{{k}}</v-col>
-                                            <v-col cols="6">{{v.join("\n")}}</v-col>
+                                            <v-col cols="6"><div v-html="v.join('<br />')"></div></v-col>
                                         </template>
                                     </v-row>
                                 </v-container>
