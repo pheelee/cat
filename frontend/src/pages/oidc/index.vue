@@ -72,12 +72,12 @@
                     <div v-else>
                         <v-card title="ID Token">
                             <v-card-text>
-                                <pre v-html="tokens.id_token"></pre>
+                                <pre style="white-space: break-spaces" v-html="tokens.id_token"></pre>
                             </v-card-text>
                         </v-card>
                         <v-card title="Access Token">
                             <v-card-text>
-                                <pre v-html="tokens.access_token"></pre>
+                                <pre style="white-space: break-spaces" v-html="tokens.access_token"></pre>
                             </v-card-text>
                         </v-card>
                     </div>
