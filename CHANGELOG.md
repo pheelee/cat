@@ -1,3 +1,20 @@
+## v0.4.0 (2024-12-13)
+
+### Feat
+
+- enable customization of claims mapping for just in time provisioning
+- make JIT feature opt-in
+- initial commit for just in time provisioning feature
+
+### Fix
+
+- add white-space control to tokens
+- return jit config after update
+- separate roles by newline for saml assertion visualization
+- update saml metadata when url changes
+- don't persist saml idp metadata to reduce persistence space usage
+- cleanup sessions that were unused or expired before persisting them
+
 ## v0.3.0 (2024-12-12)
 
 ### Feat
