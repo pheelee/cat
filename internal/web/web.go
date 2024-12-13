@@ -501,7 +501,7 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 				}
 				// Set JIT config
 				s.JIT.Config = config
-				w.WriteHeader(http.StatusNoContent)
+				jsonResponse(w, s.JIT.Config)
 			})
 		})
 
