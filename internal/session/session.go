@@ -153,7 +153,7 @@ func (s *sessionManager) New(ip string, sessId string) (*Session, error) {
 	s.Sessions[sessId[:8]] = &Session{
 		ID:      sessId,
 		Shared:  sharedSession,
-		JIT:     JIT{Config: JITConfig{Enabled: false}},
+		JIT:     JIT{Config: JITConfig{Enabled: false, UpdateOnLogin: false, SAMLMappings: defaultClaimMappings, OIDCMappings: defaultClaimMappings}},
 		Expires: expiration,
 		SAMLConfig: SamlParams{
 			IdpUrl:             "",
@@ -216,6 +216,13 @@ func (s *sessionManager) Get(key string) *Session {
 	if !ok {
 		s.Config.logger.Warn().Str("id", key).Msg("session not found")
 		return nil
+	}
+	// Fill in claims mappings if not set
+	if se.JIT.Config.OIDCMappings == nil {
+		se.JIT.Config.OIDCMappings = defaultClaimMappings
+	}
+	if se.JIT.Config.SAMLMappings == nil {
+		se.JIT.Config.SAMLMappings = defaultClaimMappings
 	}
 	return se
 }

@@ -1,7 +1,8 @@
 import { handleReponse } from "./api"
 
 export type User = {
-	id: string
+    id: string
+    protocol: string
 	display_name: string
 	first_name: string
 	last_name: string
@@ -11,34 +12,18 @@ export type User = {
 
 export type Config = {
     enabled: boolean
+    update_on_login: boolean
+    saml_mappings: claims
+    oidc_mappings: claims
 }
 
-export const mockUsers = [
-    {
-        id: '1',
-        display_name: 'John Doe',
-        first_name: 'John',
-        last_name: 'Doe',
-        email: 'X2lYy@example.com',
-        roles: ['admin']
-    },
-    {
-        id: '2',
-        display_name: 'Jane Doe',
-        first_name: 'Jane',
-        last_name: 'Doe',
-        email: 'X2lYy@example.com',
-        roles: ['admin', 'editor']
-    },
-    {
-        id: '3',
-        display_name: 'John Doe',
-        first_name: 'John',
-        last_name: 'Doe',
-        email: 'X2lYy@example.com',
-        roles: ['viewer']
-    },
-]
+export type claims = {
+    display_name: string
+    first_name: string
+    last_name: string
+    email: string
+    roles: string
+}
 
 export default {
     getUsers: () => fetch('/api/jit/users').then(handleReponse) as Promise<User[]>,

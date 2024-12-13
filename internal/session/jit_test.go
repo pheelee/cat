@@ -115,6 +115,9 @@ func TestGetStringArrayClaim(t *testing.T) {
 func TestAddOrUpdateUserFromJWTToken(t *testing.T) {
 	j := &JIT{
 		Users: []User{{ID: "12345"}},
+		Config: JITConfig{
+			UpdateOnLogin: true,
+		},
 	}
 
 	// Mock JWT token with encoded claims
@@ -140,6 +143,14 @@ func TestAddOrUpdateUserFromJWTToken(t *testing.T) {
 	assert.Equal(t, "Doe", user.LastName)
 	assert.Equal(t, "john.doe@example.com", user.Email)
 	assert.Equal(t, []string{"admin", "user"}, user.Roles)
+	// Test with update disabled
+	j.Config.UpdateOnLogin = false
+	claims["first_name"] = "Jane"
+	claimsJson, _ = json.Marshal(claims)
+	encodedClaims = base64.RawStdEncoding.EncodeToString(claimsJson)
+	mockToken = "header." + encodedClaims + ".signature"
+	assert.Nil(t, j.AddOrUpdateUserFromJWTToken(mockToken))
+	assert.Equal(t, "John", j.Users[0].FirstName)
 	// Test invalid token format
 	err = j.AddOrUpdateUserFromJWTToken("invalid-token")
 	assert.Error(t, err)
@@ -156,6 +167,9 @@ func TestAddOrUpdateUserFromJWTToken(t *testing.T) {
 func TestAddOrUpdateUserFromSAMLAssertion(t *testing.T) {
 	j := &JIT{
 		Users: []User{{ID: "12345"}},
+		Config: JITConfig{
+			UpdateOnLogin: true,
+		},
 	}
 
 	claims := samlsp.JWTSessionClaims{
@@ -181,4 +195,22 @@ func TestAddOrUpdateUserFromSAMLAssertion(t *testing.T) {
 	assert.Equal(t, "Doe", user.LastName)
 	assert.Equal(t, "john.doe@example.com", user.Email)
 	assert.Equal(t, []string{"admin", "user"}, user.Roles)
+	// Test with update disabled
+	j.Config.UpdateOnLogin = false
+	claims.Attributes["first_name"][0] = "Jane"
+	err = j.AddOrUpdateUserFromSAMLAssertion(claims)
+	assert.Nil(t, err)
+	assert.Equal(t, "John", j.Users[0].FirstName)
+	// Test invalid claims
+	invalidClaims := samlsp.JWTSessionClaims{
+		StandardClaims: jwt.StandardClaims{ //nolint
+			Subject: "12345",
+		},
+		Attributes: samlsp.Attributes{
+			"first_name": {"John"},
+		},
+	}
+	err = j.AddOrUpdateUserFromSAMLAssertion(invalidClaims)
+	assert.Nil(t, err)
+	assert.Equal(t, "John", j.Users[0].FirstName)
 }
