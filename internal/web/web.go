@@ -114,8 +114,9 @@ func putSamlConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Certificates.Primary = s.SAMLConfig.Certificates.Primary
 	req.Certificates.Secondary = s.SAMLConfig.Certificates.Secondary
+	currentIdpUrl := s.SAMLConfig.IdpUrl
 	s.SAMLConfig = req
-	if s.SAMLConfig.IdpMetadata == "" && s.SAMLConfig.IdpUrl != "" {
+	if (s.SAMLConfig.IdpMetadata == "" && s.SAMLConfig.IdpUrl != "") || (currentIdpUrl != req.IdpUrl) {
 		c := http.Client{Timeout: 5 * time.Second}
 		res, err := c.Get(s.SAMLConfig.IdpUrl)
 		if err != nil {
