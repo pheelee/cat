@@ -9,6 +9,9 @@ export type User = {
 	roles: string[]
 }
 
+export type Config = {
+    enabled: boolean
+}
 
 export const mockUsers = [
     {
@@ -38,5 +41,13 @@ export const mockUsers = [
 ]
 
 export default {
-    getUsers: () => fetch('/api/jit/users').then(handleReponse) as Promise<User[]>
+    getUsers: () => fetch('/api/jit/users').then(handleReponse) as Promise<User[]>,
+    getConfig: () => fetch('/api/jit').then(handleReponse) as Promise<Config>,
+    postConfig: (data: Config) => fetch('/api/jit', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    }).then(handleReponse) as Promise<Config>
 }

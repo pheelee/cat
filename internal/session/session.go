@@ -153,7 +153,7 @@ func (s *sessionManager) New(ip string, sessId string) (*Session, error) {
 	s.Sessions[sessId[:8]] = &Session{
 		ID:      sessId,
 		Shared:  sharedSession,
-		JIT:     JIT{Config: JITConfig{Enabled: true}},
+		JIT:     JIT{Config: JITConfig{Enabled: false}},
 		Expires: expiration,
 		SAMLConfig: SamlParams{
 			IdpUrl:             "",

@@ -2,6 +2,10 @@
     <v-container>
         <h4 class="text-h4 font-weight-bold">Users</h4>
         <h6 class="text-h6 font-weight-regular">provisioned by JIT</h6>
+        <v-row>
+            <v-col><v-switch inset label="Enable JIT" color="secondary" v-model="config.enabled" @update:model-value="updateConfig"> </v-switch></v-col>
+        </v-row>
+        <div v-if="config.enabled">
         <v-expansion-panels stlye="margin-top:1rem;">
             <v-expansion-panel title="Claims mapping" subtitle="the following title show the mapping between the token claim and the database field">
                 <v-expansion-panel-text>
@@ -76,14 +80,18 @@
                 </tr>
         </tbody>
     </v-table>
+</div>
     </v-container>
 </template>
 
 <script setup lang="ts">
-import jitApi, {User} from '@/api/jit'
+import jitApi, {Config, User} from '@/api/jit'
 import { computed, ref } from 'vue';
 const searchString = ref('')
 const users = ref<User[]>([])
+const config = ref<Config>({
+    enabled: false
+})
 const filteredUsers = computed(() => {
     if(searchString.value === '') return users.value
     return users.value.filter(user => {
@@ -94,6 +102,16 @@ const filteredUsers = computed(() => {
         user.email.toLowerCase().includes(lowerSearchString)
     })
 })
+
+jitApi.getConfig().then((data) => {
+    config.value = data
+})
+
+const updateConfig = () => {
+    jitApi.postConfig(config.value).then((cfg: Config) => {
+        config.value = cfg
+    })
+}
 
 jitApi.getUsers().then((data) => {
     users.value = data
