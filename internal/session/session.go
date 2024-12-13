@@ -36,7 +36,7 @@ type SamlParams struct {
 	IdpUrl             string        `json:"idp_url" yaml:"idp_url"`
 	SPEntityID         string        `json:"sp_entity_id" yaml:"sp_entity_id"`
 	SPMetadataUrl      string        `json:"sp_metadata_url" yaml:"sp_metadata_url"`
-	IdpMetadata        string        `json:"idp_metadata" yaml:"idp_metadata"`
+	IdpMetadata        string        `json:"idp_metadata" yaml:"-"`
 	RequestSigning     bool          `json:"request_signing" yaml:"request_signing"`
 	RequestSigningAlgo string        `json:"request_signing_algo" yaml:"request_signing_algo"`
 	AddEncryptionCert  bool          `json:"add_encryption_cert" yaml:"add_encryption_cert"`
