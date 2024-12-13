@@ -183,14 +183,22 @@ func (s *sessionManager) New(ip string, sessId string) (*Session, error) {
 	return s.Sessions[sessId[:8]], nil
 }
 
-// OnAppShutdown writes the current session state to disk on app shutdown.
-//
-// It serializes the current session state to JSON and writes it to the file
-// path specified in the sessionManager's Config. If the write fails, the error
-// is returned
+// OnAppShutdown writes the current session state to disk, removing any
+// invalid sessions or sessions without SAML or OIDC configuration. It
+// marshals the session data into YAML format and writes it to the file
+// specified in the session manager's configuration. Returns an error
+// if marshaling or writing to the file fails.
 func (s *sessionManager) OnAppShutdown() error {
 	s.Config.logger.Info().Msg("writing session state to disk")
-	//TODO: remove expired sessions
+	for k, se := range s.Sessions {
+		if se == nil || !se.Valid() {
+			delete(s.Sessions, k)
+			continue
+		}
+		if se.SAMLConfig.IdpUrl == "" && se.OIDCConfig.MetadataUrl == "" {
+			delete(s.Sessions, k)
+		}
+	}
 	b, err := yaml.Marshal(s.Sessions)
 	if err != nil {
 		return err

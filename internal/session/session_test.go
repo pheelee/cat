@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestNewManager(t *testing.T) {
@@ -75,13 +76,27 @@ func TestOnAppShutdown(t *testing.T) {
 	sm, err := NewManager(zerolog.Nop(), time.Hour, dir+"/session.yaml")
 	require.NoError(t, err)
 	exp := time.Now().Add(time.Hour)
+	sm.Sessions["testtes1"] = &Session{
+		ID:      "testtes1",
+		Expires: exp,
+	}
 	sm.Sessions["testtest"] = &Session{
 		ID:      "testtest",
 		Expires: exp,
+		OIDCConfig: OidcParams{
+			MetadataUrl: "https://test.com/.well-known/openid-configuration",
+		},
+		SAMLConfig: SamlParams{
+			IdpUrl: "https://test.com",
+		},
 	}
+	sm.Sessions["inexiste"] = nil
 	require.NoError(t, sm.OnAppShutdown())
-	_, err = os.ReadFile(dir + "/session.yaml")
+	b, err := os.ReadFile(dir + "/session.yaml")
 	require.NoError(t, err)
+	var sessions map[string]*Session
+	require.Nil(t, yaml.Unmarshal(b, &sessions))
+	assert.Len(t, sessions, 1)
 }
 
 func TestMiddleware(t *testing.T) {
