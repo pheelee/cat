@@ -25,8 +25,10 @@ RUN set -ex; \
     go build -o dist/Cat -ldflags "-X main.VERSION=$BUILD_VERSION" cmd/Cat/main.go
 
 FROM alpine
+ENV PORT=8090
 RUN  addgroup -g 1000 goapp; adduser -h /app -s /sbin/nologin -G goapp -D -u 1000 goapp
 COPY --from=builder --chown=goapp:goapp /go/src/Cat/dist/Cat /app/Cat
 USER goapp
 WORKDIR /app
+HEALTHCHECK --interval=30s --timeout=1s --retries=1 CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
 CMD ["/app/Cat"]

@@ -49,6 +49,7 @@ func main() {
 				Name:    "Port",
 				Aliases: []string{"p"},
 				Usage:   "listening port",
+				EnvVars: []string{"PORT"},
 				Value:   8090,
 			},
 			&cli.IntFlag{

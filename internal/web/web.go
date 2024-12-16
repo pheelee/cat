@@ -458,13 +458,18 @@ func referrerHost(r *http.Request) string {
 func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares ...func(http.Handler) http.Handler) *chi.Mux {
 	logger = log
 	r := chi.NewRouter()
-	r.Use(middlewares...)
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	r.Route("/shared/{id}", func(r chi.Router) {
+		r.Use(middlewares...)
 		r.Get("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 		}))
 	})
 	r.Route("/api", func(r chi.Router) {
+		r.Use(middlewares...)
 		r.Get("/userinfo", userinfo)
 		r.Get("/tokens", getTokens)
 		r.Route("/saml", func(r chi.Router) {
@@ -508,20 +513,23 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 	})
 
 	// route everyting else to the index.html of the embedded fs
-	r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
-		fSub, _ := fs.Sub(assets, "dist")
-		if strings.HasPrefix(r.URL.Path, "/assets") || strings.HasPrefix(r.URL.Path, "/favicon.ico") {
-			http.FileServer(http.FS(fSub)).ServeHTTP(w, r)
-			return
-		}
-		f, _ := fSub.Open("index.html")
-		defer f.Close()
-		b, _ := io.ReadAll(f)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("X-Frame-Options", "deny")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		_, _ = w.Write(b)
+	r.Route("/", func(r chi.Router) {
+		r.Use(middlewares...)
+		r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+			fSub, _ := fs.Sub(assets, "dist")
+			if strings.HasPrefix(r.URL.Path, "/assets") || strings.HasPrefix(r.URL.Path, "/favicon.ico") {
+				http.FileServer(http.FS(fSub)).ServeHTTP(w, r)
+				return
+			}
+			f, _ := fSub.Open("index.html")
+			defer f.Close()
+			b, _ := io.ReadAll(f)
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("X-Frame-Options", "deny")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			_, _ = w.Write(b)
+		})
 	})
 	return r
 }
