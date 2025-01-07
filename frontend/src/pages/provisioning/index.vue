@@ -6,12 +6,13 @@
             <v-col><v-switch inset label="Enable" color="secondary" v-model="provisioning_config.enabled"
                     @update:model-value="updateConfig" hint="Enable user and group provisioning functionality"
                     persistent-hint> </v-switch></v-col>
-                    <v-col>
-                        <v-radio-group v-model="provisioning_config.strategy" inline hint="Provisioning strategy" persistent-hint>
-                            <v-radio label="JIT" :value="0" color="secondary"></v-radio>
-                            <v-radio label="SCIM" :value="1" color="secondary"></v-radio>
-                        </v-radio-group>
-                    </v-col>
+            <v-col>
+                <v-radio-group @update:model-value="provisioning_config.enabled = false"
+                    v-model="provisioning_config.strategy" inline hint="Provisioning strategy" persistent-hint>
+                    <v-radio label="JIT" :value="0" color="secondary"></v-radio>
+                    <v-radio label="SCIM" :value="1" color="secondary"></v-radio>
+                </v-radio-group>
+            </v-col>
         </v-row>
         <div>
             <v-expansion-panels>
@@ -19,19 +20,19 @@
                     <v-expansion-panel-text>
                         <v-row>
                             <v-col cols="12" md="6">
-                                <v-text-field label="Endpoint URL" prepend-inner-icon="mdi-web" v-model="provisioning_config.scim.url" readonly variant="outlined"
-                                    hide-details>
-                                <template v-slot:append-inner>
-                                    <copy-to-clipboard :text="provisioning_config.scim.url"></copy-to-clipboard>
-                                </template>
+                                <v-text-field label="Endpoint URL" prepend-inner-icon="mdi-web"
+                                    v-model="provisioning_config.scim.url" readonly variant="outlined" hide-details>
+                                    <template v-slot:append-inner>
+                                        <copy-to-clipboard :text="provisioning_config.scim.url"></copy-to-clipboard>
+                                    </template>
                                 </v-text-field>
                             </v-col>
                             <v-col cols="12" md="6">
-                                <v-text-field label="Token" prepend-inner-icon="mdi-key" v-model="provisioning_config.scim.token" readonly variant="outlined"
-                                    hide-details>
-                                <template v-slot:append-inner>
-                                    <copy-to-clipboard :text="provisioning_config.scim.token"></copy-to-clipboard>
-                                </template>
+                                <v-text-field label="Token" prepend-inner-icon="mdi-key"
+                                    v-model="provisioning_config.scim.token" readonly variant="outlined" hide-details>
+                                    <template v-slot:append-inner>
+                                        <copy-to-clipboard :text="provisioning_config.scim.token"></copy-to-clipboard>
+                                    </template>
                                 </v-text-field>
                             </v-col>
                         </v-row>
@@ -103,86 +104,94 @@
                 </v-expansion-panel>
             </v-expansion-panels>
             <div v-if="provisioning_config.strategy == Strategy.JIT">
-            <v-row style="margin-top:1rem;">
+                <v-row style="margin-top:1rem;">
+                    <v-col>
+                        <v-text-field v-model="searchString" variant="outlined" prepend-inner-icon="mdi-magnify"
+                            label="Search"></v-text-field>
+                    </v-col>
+                </v-row>
+                <v-table>
+                    <thead>
+                        <tr>
+                            <th>Protocol</th>
+                            <th class="text-left">ID</th>
+                            <th class="text-left">Display Name</th>
+                            <th class="text-left">First Name</th>
+                            <th class="text-left">Last Name</th>
+                            <th class="text-left">Email</th>
+                            <th class="text-left">Roles</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="user in filteredUsers" :key="user.id">
+                            <td><v-chip variant="flat"
+                                    :color="user.protocol === 'OIDC' ? 'deep-purple-darken-2' : 'secondary'">{{
+                                    user.protocol }}</v-chip>
+                            </td>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.display_name }}</td>
+                            <td>{{ user.first_name }}</td>
+                            <td>{{ user.last_name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                <ul>
+                                    <li v-for="role in user.roles" :key="role">{{ role }}</li>
+                                </ul>
+                            </td>
+                        </tr>
+                    </tbody>
+                </v-table>
+            </div>
+            <v-row v-if="provisioning_config.strategy == Strategy.SCIM">
                 <v-col>
-                    <v-text-field v-model="searchString" variant="outlined" prepend-inner-icon="mdi-magnify"
-                        label="Search"></v-text-field>
+                    <h3 class="section-header">SCIM Log <v-btn variant="text" icon="mdi-update" color="secondary"
+                            @click="fetchSCIMLog"></v-btn></h3>
+                    <h5 v-if="scimLog.length == 0">No logs found</h5>
+                    <v-expansion-panels>
+                        <v-expansion-panel v-for="(log, i) in scimLog" :key="i">
+                            <v-expansion-panel-title>
+                                <v-row class="align-center">
+                                    <v-col cols="1"><v-chip variant="text" :color="methodColor(log.method)">{{
+                                            log.method
+                                            }}</v-chip></v-col>
+                                    <v-col cols="10"><v-text-field variant="solo-filled" v-model="log.url" readonly
+                                            hide-details></v-text-field></v-col>
+                                    <v-col cols="1"><v-chip variant="tonal" label
+                                            :color="statusColor(log.status_code)">{{
+                                            log.status_code }}</v-chip></v-col>
+                                </v-row>
+                            </v-expansion-panel-title>
+                            <v-expansion-panel-text>
+                                {{ localDate(log.timestamp) }}
+                                <v-tabs v-model="scimLogTab" color="secondary">
+                                    <v-tab value="headers">Headers</v-tab>
+                                    <v-tab value="request">Request</v-tab>
+                                    <v-tab value="response">Response</v-tab>
+                                </v-tabs>
+                                <v-tabs-window v-model="scimLogTab">
+                                    <v-container>
+                                        <v-tabs-window-item value="headers">
+                                            <pre v-html="colorizeHeaders(log.headers)"></pre>
+                                        </v-tabs-window-item>
+                                        <v-tabs-window-item value="request">
+                                            <pre v-html="log.request"></pre>
+                                        </v-tabs-window-item>
+                                        <v-tabs-window-item value="response">
+                                            <pre v-html="log.response"></pre>
+                                        </v-tabs-window-item>
+                                    </v-container>
+                                </v-tabs-window>
+                            </v-expansion-panel-text>
+                        </v-expansion-panel>
+                    </v-expansion-panels>
                 </v-col>
             </v-row>
-            <v-table>
-                <thead>
-                    <tr>
-                        <th>Protocol</th>
-                        <th class="text-left">ID</th>
-                        <th class="text-left">Display Name</th>
-                        <th class="text-left">First Name</th>
-                        <th class="text-left">Last Name</th>
-                        <th class="text-left">Email</th>
-                        <th class="text-left">Roles</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="user in filteredUsers" :key="user.id">
-                        <td><v-chip variant="flat"
-                                :color="user.protocol === 'OIDC' ? 'deep-purple-darken-2' : 'secondary'">{{ user.protocol }}</v-chip>
-                        </td>
-                        <td>{{ user.id }}</td>
-                        <td>{{ user.display_name }}</td>
-                        <td>{{ user.first_name }}</td>
-                        <td>{{ user.last_name }}</td>
-                        <td>{{ user.email }}</td>
-                        <td>
-                            <ul>
-                                <li v-for="role in user.roles" :key="role">{{ role }}</li>
-                            </ul>
-                        </td>
-                    </tr>
-                </tbody>
-            </v-table>
         </div>
-        <v-row v-if="provisioning_config.strategy == Strategy.SCIM">
-            <v-col>
-                <h3 class="section-header">SCIM Log <v-btn variant="text" icon="mdi-update" color="secondary" @click="fetchSCIMLog"></v-btn></h3>
-                <h5 v-if="scimLog.length == 0">No logs found</h5>
-                <v-expansion-panels>
-                    <v-expansion-panel v-for="(log, i) in scimLog" :key="i">
-                        <v-expansion-panel-title>
-                            <v-row class="align-center">
-                                <v-col cols="1"><v-chip variant="text" :color="methodColor(log.method)">{{ log.method }}</v-chip></v-col>
-                                <v-col cols="10"><v-text-field variant="solo-filled" v-model="log.url" readonly hide-details></v-text-field></v-col>
-                                <v-col cols="1"><v-chip variant="tonal" label :color="statusColor(log.status_code)">{{ log.status_code }}</v-chip></v-col>
-                            </v-row>
-                        </v-expansion-panel-title>
-                        <v-expansion-panel-text>
-                            {{ localDate(log.timestamp) }}
-                            <v-tabs v-model="scimLogTab" color="secondary">
-                                <v-tab value="headers">Headers</v-tab>
-                                <v-tab value="request">Request</v-tab>
-                                <v-tab value="response">Response</v-tab>
-                            </v-tabs>
-                            <v-tabs-window v-model="scimLogTab">
-                                <v-container>
-                                <v-tabs-window-item value="headers">
-                                    <pre v-html="colorizeHeaders(log.headers)"></pre>
-                                    </v-tabs-window-item>
-                                <v-tabs-window-item value="request">
-                                    <pre v-html="log.request"></pre>
-                                </v-tabs-window-item>
-                                <v-tabs-window-item value="response">
-                                    <pre v-html="log.response"></pre>
-                                </v-tabs-window-item>
-                            </v-container>
-                            </v-tabs-window>
-                        </v-expansion-panel-text>
-                    </v-expansion-panel>
-                </v-expansion-panels>
-            </v-col>
-        </v-row>
-    </div>
     </v-container>
 </template>
 <style>
-.json-key, .header-key {
+.json-key,
+.header-key {
     color: #EF9A9A;
 }
 
@@ -194,12 +203,15 @@
     color: #CE93D8;
 }
 
-.json-string, .header-value {
+.json-string,
+.header-value {
     color: #E6EE9C;
 }
+
 .v-field__input {
     cursor: pointer;
 }
+
 .section-header {
     margin-top: 2rem;
     margin-bottom: 2rem;
@@ -333,7 +345,7 @@ const methodColor = (method: string) => {
 }
 
 const statusColor = (status: number) => {
-    if(status >= 200 && status < 300) {
+    if (status >= 200 && status < 300) {
         return 'success'
     }
     return 'error'
@@ -352,7 +364,7 @@ const filteredUsers = computed(() => {
 provisioningApi.getConfig().then((data) => {
     provisioning_config.value = data
     provisioningApi.getUsers().then((userMap) => {
-        if(Object.keys(userMap).length > 0) {
+        if (Object.keys(userMap).length > 0) {
             users.value = Object.values(userMap)
         }
     })
@@ -362,10 +374,10 @@ provisioningApi.getConfig().then((data) => {
 const fetchSCIMLog = () => {
     provisioningApi.getSCIMLog().then((log) => {
         log.forEach((l) => {
-            if(l.request)
-            l.request = prettyJSON(l.request)
-            if(l.response)
-            l.response = prettyJSON(l.response)
+            if (l.request)
+                l.request = prettyJSON(l.request)
+            if (l.response)
+                l.response = prettyJSON(l.response)
         })
         // Reverse log
         log.reverse()
