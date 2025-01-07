@@ -209,7 +209,7 @@ func (s *sessionManager) OnAppShutdown() error {
 			delete(s.Sessions, k)
 			continue
 		}
-		if se.SAMLConfig.IdpUrl == "" && se.OIDCConfig.MetadataUrl == "" {
+		if se.SAMLConfig.IdpUrl == "" && se.OIDCConfig.MetadataUrl == "" && se.Provisioning.SCIM == nil {
 			delete(s.Sessions, k)
 		}
 	}
