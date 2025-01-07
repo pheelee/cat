@@ -505,7 +505,11 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 		r.Route("/provisioning", func(r chi.Router) {
 			r.Get("/scim/log", func(w http.ResponseWriter, r *http.Request) {
 				s := r.Context().Value(session.SessionKey).(*session.Session)
-				jsonResponse(w, s.Provisioning.SCIM.Logs())
+				if s.Provisioning.SCIM != nil {
+					jsonResponse(w, s.Provisioning.SCIM.Logs())
+					return
+				}
+				jsonResponse(w, []string{})
 			})
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				s := r.Context().Value(session.SessionKey).(*session.Session)
