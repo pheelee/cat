@@ -68,9 +68,10 @@ func GetServer(endpoint string) (*SCIMInstance, error) {
 			SchemaExtensions: []scim.SchemaExtension{
 				{Schema: schema.ExtensionEnterpriseUser()},
 			},
-			Handler: memoryResourceHandler{
+			Handler: &memoryResourceHandler{
 				data:   make(map[string]resourceData),
 				schema: schema.CoreUserSchema(),
+				nextID: 1,
 			},
 		},
 		{
@@ -80,9 +81,10 @@ func GetServer(endpoint string) (*SCIMInstance, error) {
 			Description:      optional.NewString("Group"),
 			Schema:           schema.CoreGroupSchema(),
 			SchemaExtensions: []scim.SchemaExtension{},
-			Handler: memoryResourceHandler{
+			Handler: &memoryResourceHandler{
 				data:   make(map[string]resourceData),
 				schema: schema.CoreGroupSchema(),
+				nextID: 1,
 			},
 		},
 	}
