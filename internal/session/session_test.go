@@ -14,7 +14,7 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
-	sm, err := NewManager(zerolog.Nop(), time.Hour, "/tmp/session.yaml")
+	sm, err := NewManager(zerolog.Nop(), time.Hour, "/tmp/session.yaml", "")
 	require.NoError(t, err)
 	require.NotNil(t, sm)
 	assert.NotNil(t, sm.Sessions)
@@ -26,7 +26,7 @@ func TestNewManager(t *testing.T) {
 	defer os.Remove(f.Name())
 	require.NoError(t, os.WriteFile(f.Name(), []byte("{}"), 0600))
 	require.NoError(t, f.Close())
-	sm, err = NewManager(zerolog.Nop(), time.Hour, f.Name())
+	sm, err = NewManager(zerolog.Nop(), time.Hour, f.Name(), "")
 	require.NoError(t, err)
 	require.NotNil(t, sm)
 	assert.NotNil(t, sm.Sessions)
@@ -44,10 +44,10 @@ func TestSessionValid(t *testing.T) {
 }
 
 func TestNewSession(t *testing.T) {
-	sm, err := NewManager(zerolog.Nop(), time.Hour, "/tmp/session.yaml")
+	sm, err := NewManager(zerolog.Nop(), time.Hour, "/tmp/session.yaml", "")
 	require.NoError(t, err)
 	require.NotNil(t, sm)
-	s, _ := sm.New("1.2.3.4", "")
+	s, _ := sm.NewSession("1.2.3.4", "")
 	require.NotNil(t, s)
 	assert.Len(t, sm.Sessions, 1)
 	assert.Equal(t, s.ID, sm.Sessions[s.ID[:8]].ID)
@@ -67,13 +67,16 @@ func TestGetSession(t *testing.T) {
 	s3 := sm.Get("testtestdeadbeef")
 	require.NotNil(t, s3)
 	assert.Equal(t, "testtest", s3.ID)
+	s.Provisioning.Config.SCIM = &scimConfig{Url: "https://test.com"}
+	s4 := sm.Get("testtest")
+	require.NotNil(t, s4.Provisioning.Config.SCIM)
 }
 
 func TestOnAppShutdown(t *testing.T) {
 	dir, err := os.MkdirTemp("", "")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
-	sm, err := NewManager(zerolog.Nop(), time.Hour, dir+"/session.yaml")
+	sm, err := NewManager(zerolog.Nop(), time.Hour, dir+"/session.yaml", "")
 	require.NoError(t, err)
 	exp := time.Now().Add(time.Hour)
 	sm.Sessions["testtes1"] = &Session{
@@ -97,6 +100,41 @@ func TestOnAppShutdown(t *testing.T) {
 	var sessions map[string]*Session
 	require.Nil(t, yaml.Unmarshal(b, &sessions))
 	assert.Len(t, sessions, 1)
+}
+
+func TestGetAnonymousPathId(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{
+			name: "saml metadata",
+			path: "/api/saml/testtest/metadata",
+			want: "testtest",
+		},
+		{
+			name: "oidc metadata",
+			path: "/api/oidc/testtest/metadata",
+			want: "testtest",
+		},
+		{
+			name: "scim",
+			path: "/scim/testtest",
+			want: "testtest",
+		},
+		{
+			name: "arbitrary path",
+			path: "/api/oidc/setup",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, getAnonymousPathId(tt.path))
+		})
+	}
 }
 
 func TestMiddleware(t *testing.T) {

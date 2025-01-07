@@ -21,7 +21,7 @@
           <v-list-item prepend-icon="mdi-home" title="Home" value="home" to="/"></v-list-item>
           <v-list-item prepend-icon="mdi-xml" title="SAML" value="saml" to="/saml"></v-list-item>
           <v-list-item prepend-icon="mdi-code-json" title="OIDC" value="oidc" to="/oidc"></v-list-item>
-          <v-list-item prepend-icon="mdi-account-multiple" title="Users" value="users" to="/users"></v-list-item>
+          <v-list-item prepend-icon="mdi-account-multiple" title="Provisioning" value="provisioning" to="/provisioning"></v-list-item>
         </v-list>
         <v-divider></v-divider>
         <v-list>

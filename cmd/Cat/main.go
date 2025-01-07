@@ -60,7 +60,7 @@ func main() {
 			},
 		},
 		Action: func(ctx *cli.Context) error {
-			sm, err := session.NewManager(logger, time.Duration(ctx.Int("SessionLifetime"))*time.Hour, "./session.yaml")
+			sm, err := session.NewManager(logger, time.Duration(ctx.Int("SessionLifetime"))*time.Hour, "./session.yaml", ctx.String("CookieSecret"))
 			if err != nil {
 				return err
 			}

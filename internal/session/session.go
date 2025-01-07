@@ -7,12 +7,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/crewjam/saml/samlsp"
+	"github.com/pheelee/Cat/internal/scim2"
 	"github.com/pheelee/Cat/pkg/cert"
 	"github.com/pheelee/Cat/pkg/pkce"
 	"github.com/rs/zerolog"
@@ -23,8 +24,7 @@ import (
 type keySession string
 
 var (
-	SessionKey     = keySession("cat-session")
-	anonymousPaths = regexp.MustCompile(`^/api/(saml|oidc)/([a-zA-Z0-9]{8})/metadata$`)
+	SessionKey = keySession("cat-session")
 )
 
 type errorResponse struct {
@@ -68,19 +68,21 @@ type responseType struct {
 
 type sessionConfig struct {
 	Expiration time.Duration
+	Secret     string
 	Filepath   string
 	logger     zerolog.Logger
 }
 
 type Session struct {
-	ID         string             `json:"id" yaml:"id"`
-	Shared     bool               `json:"shared" yaml:"shared"`
-	JIT        JIT                `json:"jit" yaml:"jit"`
-	Expires    time.Time          `json:"expires" yaml:"expires"`
-	SAMLConfig SamlParams         `json:"saml,omitempty" yaml:"saml,omitempty"`
-	OIDCConfig OidcParams         `json:"oidc,omitempty" yaml:"oidc,omitempty"`
-	SAMLSP     *samlsp.Middleware `json:"-" yaml:"-"`
-	OIDCClient oidcClient         `json:"-" yaml:"-"`
+	manager      *sessionManager    `json:"-" yaml:"-"`
+	ID           string             `json:"id" yaml:"id"`
+	Shared       bool               `json:"shared" yaml:"shared"`
+	Provisioning Provisioning       `json:"provisioning" yaml:"provisioning"`
+	Expires      time.Time          `json:"expires" yaml:"expires"`
+	SAMLConfig   SamlParams         `json:"saml,omitempty" yaml:"saml,omitempty"`
+	OIDCConfig   OidcParams         `json:"oidc,omitempty" yaml:"oidc,omitempty"`
+	SAMLSP       *samlsp.Middleware `json:"-" yaml:"-"`
+	OIDCClient   oidcClient         `json:"-" yaml:"-"`
 }
 
 type oidcClient struct {
@@ -108,12 +110,13 @@ type sessionManager struct {
 // duration, and file path. It loads the active sessions from the given file
 // path, and returns an error if the file does not exist or if there is an
 // error loading the sessions.
-func NewManager(logger zerolog.Logger, expiration time.Duration, filePath string) (*sessionManager, error) {
+func NewManager(logger zerolog.Logger, expiration time.Duration, filePath, secret string) (*sessionManager, error) {
 	sm := sessionManager{
 		Config: sessionConfig{
 			Expiration: expiration,
 			Filepath:   filePath,
 			logger:     logger.With().Str("component", "sessionManager").Logger(),
+			Secret:     secret,
 		},
 		Sessions: map[string]*Session{},
 	}
@@ -131,7 +134,7 @@ func NewManager(logger zerolog.Logger, expiration time.Duration, filePath string
 // and sets its expiration time to the current time plus the session
 // manager's expiration duration. The new session is stored in the session
 // manager's map of active sessions and returned.
-func (s *sessionManager) New(ip string, sessId string) (*Session, error) {
+func (s *sessionManager) NewSession(ip string, sessId string) (*Session, error) {
 	sharedSession := sessId != ""
 	expiration := time.Now().Add(time.Hour * 24 * 365)
 	if sessId == "" {
@@ -151,9 +154,20 @@ func (s *sessionManager) New(ip string, sessId string) (*Session, error) {
 		return nil, err
 	}
 	s.Sessions[sessId[:8]] = &Session{
+		manager: s,
 		ID:      sessId,
 		Shared:  sharedSession,
-		JIT:     JIT{Config: JITConfig{Enabled: false, UpdateOnLogin: false, SAMLMappings: defaultClaimMappings, OIDCMappings: defaultClaimMappings}},
+		Provisioning: Provisioning{
+			Mutex: sync.Mutex{},
+			Config: ProvisioningConfig{
+				Enabled:  false,
+				Strategy: JITProvisioning,
+				JIT:      &JITConfig{},
+				SCIM:     &scimConfig{},
+			},
+			Users:  map[string]User{},
+			Groups: map[string]Group{},
+		},
 		Expires: expiration,
 		SAMLConfig: SamlParams{
 			IdpUrl:             "",
@@ -195,7 +209,7 @@ func (s *sessionManager) OnAppShutdown() error {
 			delete(s.Sessions, k)
 			continue
 		}
-		if se.SAMLConfig.IdpUrl == "" && se.OIDCConfig.MetadataUrl == "" {
+		if se.SAMLConfig.IdpUrl == "" && se.OIDCConfig.MetadataUrl == "" && se.Provisioning.SCIM == nil {
 			delete(s.Sessions, k)
 		}
 	}
@@ -206,8 +220,9 @@ func (s *sessionManager) OnAppShutdown() error {
 	return os.WriteFile(filepath.Clean(s.Config.Filepath), b, 0600)
 }
 
-// Get returns the session with the given ID if it exists and is valid,
-// otherwise nil is returned.
+// Get returns the session with the given key. If the key is longer than 8 bytes,
+// it is truncated to 8 bytes. If the session is not found, it logs a warning and
+// returns nil.
 func (s *sessionManager) Get(key string) *Session {
 	if len(key) > 8 {
 		key = key[:8]
@@ -218,13 +233,44 @@ func (s *sessionManager) Get(key string) *Session {
 		return nil
 	}
 	// Fill in claims mappings if not set
-	if se.JIT.Config.OIDCMappings == nil {
-		se.JIT.Config.OIDCMappings = defaultClaimMappings
+	if se.Provisioning.Config.JIT == nil {
+		se.Provisioning.Config.JIT = &JITConfig{
+			SAMLMappings: defaultClaimMappings,
+			OIDCMappings: defaultClaimMappings,
+		}
 	}
-	if se.JIT.Config.SAMLMappings == nil {
-		se.JIT.Config.SAMLMappings = defaultClaimMappings
+	if se.Provisioning.Config.SCIM == nil {
+		se.Provisioning.Config.SCIM = &scimConfig{}
+	} else {
+		if se.Provisioning.SCIM == nil && se.Provisioning.Config.SCIM.Url != "" {
+			srv, _ := scim2.GetServer(se.Provisioning.Config.SCIM.Url)
+			se.Provisioning.SCIM = srv
+		}
 	}
+	if se.Provisioning.Users == nil {
+		se.Provisioning.Users = map[string]User{}
+	}
+	if se.Provisioning.Groups == nil {
+		se.Provisioning.Groups = map[string]Group{}
+	}
+	se.manager = s
 	return se
+}
+
+// getAnonymousPathId returns the session ID from an anonymous path, if applicable.
+// An anonymous path is a path that contains a session ID but no authentication
+// information. Examples include "/api/saml/<id>/metadata" or "/scim/<id>".
+// If the path is not an anonymous path, an empty string is returned.
+func getAnonymousPathId(path string) string {
+	if (strings.HasPrefix(path, "/api/saml") || strings.HasPrefix(path, "/api/oidc")) && strings.HasSuffix(path, "/metadata") {
+		p := strings.Split(path, "/")
+		return p[3]
+	}
+	if strings.HasPrefix(path, "/scim/") {
+		p := strings.Split(path, "/")
+		return p[2]
+	}
+	return ""
 }
 
 // Middleware returns an http.Handler that validates the session cookie in the request
@@ -238,14 +284,14 @@ func (s *sessionManager) Get(key string) *Session {
 func (s sessionManager) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// first check if we have a session id in the path
-		if anonymousPaths.MatchString(r.URL.Path) {
-			m := anonymousPaths.FindStringSubmatch(r.URL.Path)
-			se := s.Get(m[2])
+		anonymousId := getAnonymousPathId(r.URL.Path)
+		if anonymousId != "" {
+			se := s.Get(anonymousId)
 			if se != nil && se.Valid() {
 				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), SessionKey, se)))
 				return
 			} else {
-				s.Config.logger.Warn().Str("id", m[2]).Str("path", r.URL.Path).Msg("anonymousPath: session not found")
+				s.Config.logger.Warn().Str("id", anonymousId).Str("path", r.URL.Path).Msg("anonymousPath: session not found")
 				// TODO: present a beautiful not found page
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write([]byte("Session not found"))
@@ -263,7 +309,7 @@ func (s sessionManager) Middleware(next http.Handler) http.Handler {
 			if se == nil || !se.Valid() {
 				var err error
 				s.Config.logger.Warn().Str("id", strings.Split(r.URL.Path, "/")[2]).Str("path", r.URL.Path).Msg("create new shared session")
-				se, err = s.New(r.RemoteAddr, strings.Split(r.URL.Path, "/")[2])
+				se, err = s.NewSession(r.RemoteAddr, strings.Split(r.URL.Path, "/")[2])
 				if err != nil {
 					s.Config.logger.Error().Err(err).Msg("failed to create shared session")
 					// TODO: present a beautiful error page
@@ -305,7 +351,7 @@ func (s sessionManager) Middleware(next http.Handler) http.Handler {
 		if ip == "" {
 			ip = strings.Split(r.RemoteAddr, ":")[0]
 		}
-		se, err := s.New(ip, "")
+		se, err := s.NewSession(ip, "")
 		if err != nil {
 			s.Config.logger.Error().Err(err).Msg("failed to create session")
 			w.WriteHeader(http.StatusInternalServerError)

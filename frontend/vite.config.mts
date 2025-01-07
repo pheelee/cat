@@ -55,6 +55,10 @@ export default defineConfig({
         changeOrigin: true,
         target: 'http://localhost:8090',
       },
+      '/scim': {
+        changeOrigin: true,
+        target: 'http://localhost:8090',
+      },
       '/shared': {
         changeOrigin: true,
         target: 'http://localhost:8090',
