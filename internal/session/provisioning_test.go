@@ -11,8 +11,9 @@ import (
 )
 
 func TestGetUserById(t *testing.T) {
-	j := JIT{
-		Users: []User{{ID: "test"}},
+	j := Provisioning{
+		Users: map[string]User{
+			"test": {ID: "test"}},
 	}
 	assert.NotNil(t, j.getUserById("test"))
 	assert.NotNil(t, j.getUserById("testtest"))
@@ -113,10 +114,14 @@ func TestGetStringArrayClaim(t *testing.T) {
 }
 
 func TestAddOrUpdateUserFromJWTToken(t *testing.T) {
-	j := &JIT{
-		Users: []User{{ID: "12345"}},
-		Config: JITConfig{
-			UpdateOnLogin: true,
+	j := &Provisioning{
+		Users: map[string]User{
+			"12345": {ID: "12345"},
+		},
+		Config: ProvisioningConfig{
+			JIT: &JITConfig{
+				UpdateOnLogin: true,
+			},
 		},
 	}
 
@@ -136,7 +141,7 @@ func TestAddOrUpdateUserFromJWTToken(t *testing.T) {
 	err := j.AddOrUpdateUserFromJWTToken(mockToken)
 	assert.NoError(t, err)
 
-	user := j.Users[0]
+	user := j.Users["12345"]
 	assert.NotNil(t, user)
 	assert.Equal(t, "John Doe", user.DisplayName)
 	assert.Equal(t, "John", user.FirstName)
@@ -144,13 +149,13 @@ func TestAddOrUpdateUserFromJWTToken(t *testing.T) {
 	assert.Equal(t, "john.doe@example.com", user.Email)
 	assert.Equal(t, []string{"admin", "user"}, user.Roles)
 	// Test with update disabled
-	j.Config.UpdateOnLogin = false
+	j.Config.JIT.UpdateOnLogin = false
 	claims["first_name"] = "Jane"
 	claimsJson, _ = json.Marshal(claims)
 	encodedClaims = base64.RawStdEncoding.EncodeToString(claimsJson)
 	mockToken = "header." + encodedClaims + ".signature"
 	assert.Nil(t, j.AddOrUpdateUserFromJWTToken(mockToken))
-	assert.Equal(t, "John", j.Users[0].FirstName)
+	assert.Equal(t, "John", j.Users["12345"].FirstName)
 	// Test invalid token format
 	err = j.AddOrUpdateUserFromJWTToken("invalid-token")
 	assert.Error(t, err)
@@ -165,10 +170,14 @@ func TestAddOrUpdateUserFromJWTToken(t *testing.T) {
 }
 
 func TestAddOrUpdateUserFromSAMLAssertion(t *testing.T) {
-	j := &JIT{
-		Users: []User{{ID: "12345"}},
-		Config: JITConfig{
-			UpdateOnLogin: true,
+	j := &Provisioning{
+		Users: map[string]User{
+			"12345": {ID: "12345"},
+		},
+		Config: ProvisioningConfig{
+			JIT: &JITConfig{
+				UpdateOnLogin: true,
+			},
 		},
 	}
 
@@ -188,7 +197,7 @@ func TestAddOrUpdateUserFromSAMLAssertion(t *testing.T) {
 	err := j.AddOrUpdateUserFromSAMLAssertion(claims)
 	assert.NoError(t, err)
 
-	user := j.Users[0]
+	user := j.Users["12345"]
 	assert.NotNil(t, user)
 	assert.Equal(t, "John Doe", user.DisplayName)
 	assert.Equal(t, "John", user.FirstName)
@@ -196,11 +205,11 @@ func TestAddOrUpdateUserFromSAMLAssertion(t *testing.T) {
 	assert.Equal(t, "john.doe@example.com", user.Email)
 	assert.Equal(t, []string{"admin", "user"}, user.Roles)
 	// Test with update disabled
-	j.Config.UpdateOnLogin = false
+	j.Config.JIT.UpdateOnLogin = false
 	claims.Attributes["first_name"][0] = "Jane"
 	err = j.AddOrUpdateUserFromSAMLAssertion(claims)
 	assert.Nil(t, err)
-	assert.Equal(t, "John", j.Users[0].FirstName)
+	assert.Equal(t, "John", j.Users["12345"].FirstName)
 	// Test invalid claims
 	invalidClaims := samlsp.JWTSessionClaims{
 		StandardClaims: jwt.StandardClaims{ //nolint
@@ -212,5 +221,5 @@ func TestAddOrUpdateUserFromSAMLAssertion(t *testing.T) {
 	}
 	err = j.AddOrUpdateUserFromSAMLAssertion(invalidClaims)
 	assert.Nil(t, err)
-	assert.Equal(t, "John", j.Users[0].FirstName)
+	assert.Equal(t, "John", j.Users["12345"].FirstName)
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
 	"github.com/go-chi/chi/v5"
+	"github.com/pheelee/Cat/internal/scim2"
 	"github.com/pheelee/Cat/internal/session"
 	"github.com/pheelee/Cat/pkg/pkce"
 	"github.com/rs/zerolog"
@@ -183,8 +184,8 @@ func samlCallback(w http.ResponseWriter, r *http.Request) {
 	m.Lock()
 	tokenResponse[id] = &tokens{SAMLAssertion: assertion}
 	m.Unlock()
-	if s.JIT.Config.Enabled {
-		if err := s.JIT.AddOrUpdateUserFromSAMLAssertion(assertion.(samlsp.JWTSessionClaims)); err != nil {
+	if s.Provisioning.Config.Enabled && s.Provisioning.Config.Strategy == session.JITProvisioning {
+		if err := s.Provisioning.AddOrUpdateUserFromSAMLAssertion(assertion.(samlsp.JWTSessionClaims)); err != nil {
 			logger.Error().Err(err).Msg("add user from saml assertion error")
 			s.SAMLConfig.ErrorResponse.Error = "JIT provisioning failed: could not parse jwt token"
 			s.SAMLConfig.ErrorResponse.Description = err.Error()
@@ -408,15 +409,15 @@ func oidcCallback(w http.ResponseWriter, r *http.Request) {
 		SameSite: ssite,
 	})
 
-	if s.JIT.Config.Enabled {
+	if s.Provisioning.Config.Enabled && s.Provisioning.Config.Strategy == session.JITProvisioning {
 		if tokens.IDToken != "" {
-			if err := s.JIT.AddOrUpdateUserFromJWTToken(tokens.IDToken); err != nil {
+			if err := s.Provisioning.AddOrUpdateUserFromJWTToken(tokens.IDToken); err != nil {
 				logger.Error().Err(err).Msg("add or update user from jwt token error")
 				s.OIDCConfig.ErrorResponse.Error = "JIT provisioning failed: could not parse jwt token"
 				s.OIDCConfig.ErrorResponse.Description = err.Error()
 			}
 		} else {
-			if err := s.JIT.AddOrUpdateUserFromJWTToken(tokens.AccessToken); err != nil {
+			if err := s.Provisioning.AddOrUpdateUserFromJWTToken(tokens.AccessToken); err != nil {
 				logger.Error().Err(err).Msg("add or update user from jwt token error")
 				s.OIDCConfig.ErrorResponse.Error = "JIT provisioning failed: could not parse jwt token"
 				s.OIDCConfig.ErrorResponse.Description = err.Error()
@@ -461,7 +462,23 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	r.Route("/scim", func(r chi.Router) {
+		r.Use(middlewares...)
+		r.Handle("/{id}/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logger.Debug().Str("method", r.Method).Str("path", r.URL.Path).Str("query", r.URL.RawQuery).Msg("scim operation")
+			s := r.Context().Value(session.SessionKey).(*session.Session)
+			if s.Provisioning.SCIM == nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 
+			if s.ValidateJWT(r.Header.Get("Authorization")) {
+				http.StripPrefix("/scim/"+s.ID, s.Provisioning.SCIM.SCIMRecorder()).ServeHTTP(w, r)
+				return
+			}
+			w.WriteHeader(http.StatusUnauthorized)
+		}))
+	})
 	r.Route("/shared/{id}", func(r chi.Router) {
 		r.Use(middlewares...)
 		r.Get("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -485,28 +502,63 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 			r.Post("/start", oidcStart)
 			r.Post("/{id}/callback", oidcCallback)
 		})
-		r.Route("/jit", func(r chi.Router) {
+		r.Route("/provisioning", func(r chi.Router) {
+			r.Get("/scim/log", func(w http.ResponseWriter, r *http.Request) {
+				s := r.Context().Value(session.SessionKey).(*session.Session)
+				jsonResponse(w, s.Provisioning.SCIM.Logs())
+			})
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				s := r.Context().Value(session.SessionKey).(*session.Session)
-				jsonResponse(w, s.JIT.Config)
+				jsonResponse(w, s.Provisioning.Config)
 			})
 			r.Get("/users", func(w http.ResponseWriter, r *http.Request) {
 				s := r.Context().Value(session.SessionKey).(*session.Session)
-				jsonResponse(w, s.JIT.Users)
+				jsonResponse(w, s.Provisioning.Users)
+			})
+			r.Get("/groups", func(w http.ResponseWriter, r *http.Request) {
+				s := r.Context().Value(session.SessionKey).(*session.Session)
+				jsonResponse(w, s.Provisioning.Groups)
 			})
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 				s := r.Context().Value(session.SessionKey).(*session.Session)
 				// Decode body into JIT config
-				var config session.JITConfig
-				err := json.NewDecoder(r.Body).Decode(&config)
-				if err != nil {
-					logger.Error().Err(err).Msg("decode JIT config error")
+				var config session.ProvisioningConfig
+				if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
+					logger.Error().Err(err).Msg("decode provisioning config error")
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
-				// Set JIT config
-				s.JIT.Config = config
-				jsonResponse(w, s.JIT.Config)
+				if config.Enabled && config.Strategy == session.SCIMProvisioning {
+					if s.Provisioning.Config.Strategy == session.JITProvisioning {
+						// Empty Users and Groups
+						s.Provisioning.Users = map[string]session.User{}
+						s.Provisioning.Groups = map[string]session.Group{}
+					}
+					endpoint := referrerHost(r) + "/scim" + "/" + s.ID
+					srv, err := scim2.GetServer(endpoint)
+					if err != nil {
+						logger.Error().Err(err).Msg("get scim server error")
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					s.Provisioning.SCIM = srv
+					token, err := s.GenerateJWT()
+					if err != nil {
+						logger.Error().Err(err).Msg("generate jwt error")
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					config.SCIM.Token = token
+					config.SCIM.Url = endpoint
+				}
+				if config.Enabled && config.Strategy == session.JITProvisioning && s.Provisioning.Config.Strategy == session.SCIMProvisioning {
+					// Empty users and groups when switching from JIT provisioning to SCIM
+					s.Provisioning.Users = map[string]session.User{}
+					s.Provisioning.Groups = map[string]session.Group{}
+				}
+				// Set Provisioning config
+				s.Provisioning.Config = config
+				jsonResponse(w, s.Provisioning.Config)
 			})
 		})
 
