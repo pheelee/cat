@@ -1,3 +1,16 @@
+## v0.5.0 (2025-01-07)
+
+### Feat
+
+- add scim testing capability 😎
+
+### Fix
+
+- resource handler code taken from wrong example
+- user must manually re-enable provisioning upon strategy change to pick up new settings
+- persist session if SCIM was configured
+- check SCIM setup upon sending logs
+
 ## v0.4.0 (2024-12-13)
 
 ### Feat
