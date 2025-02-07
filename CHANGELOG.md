@@ -1,3 +1,13 @@
+## v0.6.0 (2025-02-07)
+
+### Feat
+
+- add s3 as storage backend
+
+### Fix
+
+- add saml acs error handling with feedback to the user
+
 ## v0.5.0 (2025-01-07)
 
 ### Feat
