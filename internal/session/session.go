@@ -1,9 +1,11 @@
 package session
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,6 +15,8 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/crewjam/saml/samlsp"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/pheelee/Cat/internal/scim2"
 	"github.com/pheelee/Cat/pkg/cert"
 	"github.com/pheelee/Cat/pkg/pkce"
@@ -70,6 +74,8 @@ type sessionConfig struct {
 	Expiration time.Duration
 	Secret     string
 	Filepath   string
+	S3         *minio.Client
+	S3Bucket   string
 	logger     zerolog.Logger
 }
 
@@ -106,11 +112,35 @@ type sessionManager struct {
 	Sessions map[string]*Session `json:"sessions" yaml:"sessions"`
 }
 
+// initS3 checks if the S3_HOST, S3_ACCESS_KEY, S3_ACCESS_SECRET and S3_BUCKET environment variables are set. If they are, it sets up an S3 client and sets sm.Config.S3 to the client.
+func (sm *sessionManager) initS3() error {
+	var err error
+	s3_host := os.Getenv("S3_HOST")
+	s3_access_key := os.Getenv("S3_ACCESS_KEY")
+	s3_access_secret := os.Getenv("S3_ACCESS_SECRET")
+	sm.Config.S3Bucket = os.Getenv("S3_BUCKET")
+	if s3_host != "" && s3_access_key != "" && s3_access_secret != "" && sm.Config.S3Bucket != "" {
+		sm.Config.logger.Info().Msg("using S3 for session storage")
+		sm.Config.S3, err = minio.New(s3_host, &minio.Options{
+			Creds:  credentials.NewStaticV4(s3_access_key, s3_access_secret, ""),
+			Secure: true,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // NewManager creates a new sessionManager with the given logger, expiration
 // duration, and file path. It loads the active sessions from the given file
 // path, and returns an error if the file does not exist or if there is an
 // error loading the sessions.
 func NewManager(logger zerolog.Logger, expiration time.Duration, filePath, secret string) (*sessionManager, error) {
+	var (
+		b   []byte
+		err error
+	)
 	sm := sessionManager{
 		Config: sessionConfig{
 			Expiration: expiration,
@@ -120,13 +150,43 @@ func NewManager(logger zerolog.Logger, expiration time.Duration, filePath, secre
 		},
 		Sessions: map[string]*Session{},
 	}
-	b, err := os.ReadFile(filepath.Clean(filePath))
+	if err = sm.initS3(); err != nil {
+		return nil, err
+	}
+	if sm.Config.S3 != nil {
+		obj, err := sm.Config.S3.GetObject(context.Background(), sm.Config.S3Bucket, filepath.Base(sm.Config.Filepath), minio.GetObjectOptions{})
+		if err != nil {
+			return nil, err
+		}
+		b, err = io.ReadAll(obj)
+		if err != nil && err.(minio.ErrorResponse).Code != "NoSuchKey" {
+			return nil, err
+		}
+		if err == nil {
+			return &sm, yaml.Unmarshal(b, &sm.Sessions)
+		}
+	}
+
+	if sm.Config.S3 == nil {
+		sm.Config.logger.Info().Msg("using local file for session storage")
+	}
+	b, err = os.ReadFile(filepath.Clean(filePath))
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	if err != nil && os.IsNotExist(err) {
 		return &sm, nil
 	}
+	// Write file to S3 to complete migration
+	if sm.Config.S3 != nil {
+		_, err = sm.Config.S3.PutObject(context.Background(), sm.Config.S3Bucket, "sessions.yaml", bytes.NewReader(b), int64(len(b)), minio.PutObjectOptions{
+			ContentType: "application/yaml",
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &sm, yaml.Unmarshal(b, &sm.Sessions)
 }
 
@@ -216,6 +276,15 @@ func (s *sessionManager) OnAppShutdown() error {
 	b, err := yaml.Marshal(s.Sessions)
 	if err != nil {
 		return err
+	}
+	if s.Config.S3 != nil {
+		_, err := s.Config.S3.PutObject(context.Background(), s.Config.S3Bucket, filepath.Base(s.Config.Filepath), bytes.NewReader(b), int64(len(b)), minio.PutObjectOptions{
+			ContentType: "application/yaml",
+		})
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 	return os.WriteFile(filepath.Clean(s.Config.Filepath), b, 0600)
 }
