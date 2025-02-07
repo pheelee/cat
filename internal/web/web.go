@@ -66,6 +66,18 @@ func userinfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func attachSamlSPErrorHandler(s *session.Session) {
+	s.SAMLSP.OnError = func(w http.ResponseWriter, r *http.Request, err error) {
+		if parseErr, ok := err.(*saml.InvalidResponseError); ok {
+			logger.Error().Err(parseErr.PrivateErr).Msg("saml acs error")
+			s.SAMLConfig.ErrorResponse.Error = parseErr.PrivateErr.Error()
+			s.SAMLConfig.ErrorResponse.Description = parseErr.Response
+			http.Redirect(w, r, "/saml?step=3", http.StatusSeeOther)
+			return
+		}
+	}
+}
+
 func getSamlConfig(w http.ResponseWriter, r *http.Request) {
 	var err error
 	s := r.Context().Value(session.SessionKey).(*session.Session)
@@ -84,6 +96,7 @@ func getSamlConfig(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, http.StatusBadRequest, err)
 			return
 		}
+		attachSamlSPErrorHandler(s)
 		origin := referrerHost(r)
 		s.SAMLConfig.SPEntityID = origin + "/" + s.ID[:8]
 		s.SAMLConfig.SPMetadataUrl = origin + "/api/saml/" + s.ID[:8] + "/metadata"
@@ -159,6 +172,7 @@ func putSamlConfig(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, err)
 		return
 	}
+	attachSamlSPErrorHandler(s)
 	if u, err = url.Parse(origin + "/api/saml/" + s.ID[:8] + "/acs"); err != nil {
 		logger.Error().Err(err).Msg("parse acs url error")
 		jsonError(w, http.StatusBadRequest, err)

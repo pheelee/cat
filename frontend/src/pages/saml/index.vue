@@ -97,6 +97,9 @@
                     </v-row>
                     <v-row>
                         <v-col cols="12">
+                            <v-alert type="error" variant="tonal" v-if="samlConfig.error_response.error">
+                                Error: {{ samlConfig.error_response.error }}
+                            </v-alert>
                             <v-card v-if="samlAssertion" variant="tonal">
                                 <v-card-title>SAML Assertion</v-card-title>
                                 <v-card-text>
@@ -253,7 +256,9 @@ const fetchConfig = () => {
         // }
         samlConfig.value = config
         api.getTokens().then((data: Tokens) => {
-            samlAssertion.value = data.saml_assertion
+            if(data.saml_assertion != null){
+                samlAssertion.value = data.saml_assertion
+            }
         })
     }).catch((error) => {
         snackText.value = error
