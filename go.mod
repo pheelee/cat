@@ -3,10 +3,10 @@ module github.com/pheelee/Cat
 go 1.23.4
 
 require (
-	github.com/minio/minio-go/v7 v7.0.84
+	github.com/minio/minio-go/v7 v7.0.85
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.5
-	golang.org/x/oauth2 v0.25.0
+	golang.org/x/oauth2 v0.26.0
 )
 
 require (
@@ -44,7 +44,7 @@ require (
 	github.com/beevik/etree v1.4.1 // indirect
 	github.com/coreos/go-oidc/v3 v3.12.0
 	github.com/crewjam/httperr v0.2.0 // indirect
-	github.com/go-chi/chi/v5 v5.2.0
+	github.com/go-chi/chi/v5 v5.2.1
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/mattermost/xml-roundtrip-validator v0.1.0 // indirect
