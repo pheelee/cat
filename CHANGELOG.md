@@ -1,3 +1,9 @@
+## v0.6.1 (2025-02-28)
+
+### Fix
+
+- **scim**: use mutex for memory resource handler to avoid collision when dealing with large data sets
+
 ## v0.6.0 (2025-02-07)
 
 ### Feat
