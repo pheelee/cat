@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/elimity-com/scim"
@@ -15,6 +16,7 @@ import (
 )
 
 type memoryResourceHandler struct {
+	sync.Mutex
 	nextID int
 	data   map[string]resourceData
 	schema schema.Schema
@@ -43,6 +45,8 @@ func externalID(attributes scim.ResourceAttributes) optional.String {
 }
 
 func (h *memoryResourceHandler) Create(r *http.Request, attributes scim.ResourceAttributes) (scim.Resource, error) {
+	h.Lock()
+	defer h.Unlock()
 	if err := checkBodyNotEmpty(r); err != nil {
 		return scim.Resource{}, err
 	}
@@ -69,6 +73,8 @@ func (h *memoryResourceHandler) Create(r *http.Request, attributes scim.Resource
 }
 
 func (h *memoryResourceHandler) Delete(r *http.Request, id string) error {
+	h.Lock()
+	defer h.Unlock()
 	if _, ok := h.data[id]; !ok {
 		return errors.ScimErrorResourceNotFound(id)
 	}
@@ -76,7 +82,9 @@ func (h *memoryResourceHandler) Delete(r *http.Request, id string) error {
 	return nil
 }
 
-func (h memoryResourceHandler) Get(r *http.Request, id string) (scim.Resource, error) {
+func (h *memoryResourceHandler) Get(r *http.Request, id string) (scim.Resource, error) {
+	h.Lock()
+	defer h.Unlock()
 	resource, ok := h.data[id]
 	if !ok {
 		return scim.Resource{}, errors.ScimErrorResourceNotFound(id)
@@ -89,7 +97,9 @@ func (h memoryResourceHandler) Get(r *http.Request, id string) (scim.Resource, e
 	}, nil
 }
 
-func (h memoryResourceHandler) GetAll(r *http.Request, params scim.ListRequestParams) (scim.Page, error) {
+func (h *memoryResourceHandler) GetAll(r *http.Request, params scim.ListRequestParams) (scim.Page, error) {
+	h.Lock()
+	defer h.Unlock()
 	if params.Count == 0 {
 		return scim.Page{
 			TotalResults: len(h.data),
@@ -127,6 +137,8 @@ func (h memoryResourceHandler) GetAll(r *http.Request, params scim.ListRequestPa
 }
 
 func (h *memoryResourceHandler) Patch(r *http.Request, id string, operations []scim.PatchOperation) (scim.Resource, error) {
+	h.Lock()
+	defer h.Unlock()
 	if err := checkBodyNotEmpty(r); err != nil {
 		return scim.Resource{}, err
 	}
@@ -134,7 +146,6 @@ func (h *memoryResourceHandler) Patch(r *http.Request, id string, operations []s
 	if _, ok := h.data[id]; !ok {
 		return scim.Resource{}, errors.ScimErrorResourceNotFound(id)
 	}
-
 	var changed bool // Whether or not changes where made
 	for _, op := range operations {
 		// Target is the root node.
@@ -295,10 +306,11 @@ func (h *memoryResourceHandler) Patch(r *http.Request, id string, operations []s
 }
 
 func (h *memoryResourceHandler) Replace(r *http.Request, id string, attributes scim.ResourceAttributes) (scim.Resource, error) {
+	h.Lock()
+	defer h.Unlock()
 	if err := checkBodyNotEmpty(r); err != nil {
 		return scim.Resource{}, err
 	}
-
 	resource, ok := h.data[id]
 	if !ok {
 		return scim.Resource{}, errors.ScimErrorResourceNotFound(id)
@@ -325,6 +337,8 @@ func (h *memoryResourceHandler) Replace(r *http.Request, id string, attributes s
 
 // createID returns a unique identifier for a resource.
 func (h *memoryResourceHandler) createID() string {
+	h.Lock()
+	defer h.Unlock()
 	id := fmt.Sprintf("%06d", h.nextID)
 	h.nextID++
 	return id
