@@ -5,6 +5,7 @@ on:
     branches:
       - develop
       - feature/*
+      - fix/*
 
 env:
   REGISTRY: ghcr.io
@@ -46,3 +47,9 @@ jobs:
           push: true
           build-args: BUILD_VERSION=${{ env.version }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.version }}, ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop
+
+      - name: Trigger container updater
+        uses: joelwmale/webhook-action@cc1a66f987e1591785273fd6f9d2f7a9d8d7c9cd
+        with:
+          url: ${{ secrets.WEBHOOK_URL }}
+          headers: '{"Authorization": "Bearer ${{ secrets.WEBHOOK_TOKEN }}"}'
