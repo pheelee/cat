@@ -1,3 +1,9 @@
+## v0.6.2 (2025-03-04)
+
+### Fix
+
+- print version on startup
+
 ## v0.6.1 (2025-02-28)
 
 ### Fix
