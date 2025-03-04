@@ -82,7 +82,7 @@ func main() {
 					logger.Error().Err(err).Msg("failed to listen and serve")
 				}
 			}(&srv)
-			logger.Info().Int("port", ctx.Int("Port")).Msg("server started")
+			logger.Info().Str("version", VERSION).Int("port", ctx.Int("Port")).Msg("server started")
 			<-sig
 			logger.Info().Msg("shutting down server")
 			sctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
