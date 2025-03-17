@@ -587,7 +587,11 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 		r.Use(middlewares...)
 		r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
 			fSub, _ := fs.Sub(assets, "dist")
-			if strings.HasPrefix(r.URL.Path, "/assets") || strings.HasPrefix(r.URL.Path, "/favicon.ico") {
+			if strings.HasPrefix(r.URL.Path, "/assets") ||
+				strings.HasPrefix(r.URL.Path, "/favicon.ico") ||
+				strings.HasPrefix(r.URL.Path, "/manifest.json") ||
+				strings.HasPrefix(r.URL.Path, "/icon512_maskable.png") ||
+				strings.HasPrefix(r.URL.Path, "/icon512_rounded.png") {
 				http.FileServer(http.FS(fSub)).ServeHTTP(w, r)
 				return
 			}
