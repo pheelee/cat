@@ -16,3 +16,14 @@ updates:
           - "patch"
         patterns:
           - "*"
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    groups:
+      all:
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
