@@ -2,8 +2,6 @@ module github.com/pheelee/Cat
 
 go 1.23.4
 
-toolchain go1.24.1
-
 require (
 	github.com/minio/minio-go/v7 v7.0.89
 	github.com/stretchr/testify v1.10.0
