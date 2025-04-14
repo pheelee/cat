@@ -3,7 +3,7 @@ module github.com/pheelee/Cat
 go 1.23.4
 
 require (
-	github.com/minio/minio-go/v7 v7.0.89
+	github.com/minio/minio-go/v7 v7.0.90
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.6
 	golang.org/x/oauth2 v0.29.0
@@ -19,7 +19,7 @@ require (
 	github.com/minio/crc64nvme v1.0.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
 
@@ -37,19 +37,17 @@ require (
 )
 
 require (
-	github.com/crewjam/saml v0.4.14
+	github.com/crewjam/saml v0.5.0
 	golang.org/x/crypto v0.36.0 // indirect
 )
 
 require (
-	github.com/beevik/etree v1.4.1 // indirect
+	github.com/beevik/etree v1.5.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.14.1
-	github.com/crewjam/httperr v0.2.0 // indirect
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/mattermost/xml-roundtrip-validator v0.1.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/russellhaering/goxmldsig v1.4.0 // indirect
 )
 
