@@ -37,7 +37,7 @@ require (
 )
 
 require (
-	github.com/crewjam/saml v0.5.0
+	github.com/crewjam/saml v0.5.1
 	golang.org/x/crypto v0.36.0 // indirect
 )
 
