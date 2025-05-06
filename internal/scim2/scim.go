@@ -114,7 +114,7 @@ func (s *SCIMInstance) SCIMRecorder() http.Handler {
 			// Log Error!
 			return
 		}
-		r.Body.Close()
+		_ = r.Body.Close()
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 		rec := message{
 			Timestamp:  time.Now().UTC(),

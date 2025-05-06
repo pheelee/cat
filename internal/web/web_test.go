@@ -101,7 +101,7 @@ func TestPutSamlConfig(t *testing.T) {
 	require.NoError(t, err)
 	s.SAMLConfig.SPEntityID = "testSP"
 	require.Nil(t, err)
-	var body session.SamlParams = session.SamlParams{
+	var body = session.SamlParams{
 		SPEntityID: "testSP",
 	}
 	b, err := json.Marshal(body)

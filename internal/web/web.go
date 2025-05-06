@@ -118,7 +118,7 @@ func putSamlConfig(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, err)
 		return
 	}
-	defer r.Body.Close()
+	defer r.Body.Close() //nolint:errcheck
 	//TODO: validate user input!
 	var req session.SamlParams
 	if err := json.Unmarshal(b, &req); err != nil {
@@ -138,7 +138,7 @@ func putSamlConfig(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, http.StatusBadRequest, err)
 			return
 		}
-		defer res.Body.Close()
+		defer res.Body.Close() //nolint:errcheck
 		b, err = io.ReadAll(res.Body)
 		if err != nil {
 			logger.Error().Err(err).Msg("read idp metadata error")
@@ -232,12 +232,12 @@ func samlMetadata(w http.ResponseWriter, r *http.Request) {
 	if !s.SAMLConfig.AddEncryptionCert {
 		for i, s := range data.SPSSODescriptors {
 			var kd []saml.KeyDescriptor
-			for _, p := range s.SSODescriptor.RoleDescriptor.KeyDescriptors {
+			for _, p := range s.KeyDescriptors {
 				if p.Use != "encryption" {
 					kd = append(kd, p)
 				}
 			}
-			data.SPSSODescriptors[i].SSODescriptor.RoleDescriptor.KeyDescriptors = kd
+			data.SPSSODescriptors[i].KeyDescriptors = kd
 		}
 	}
 	w.Header().Set("Content-Disposition", "attachment; filename=cat-"+s.ID[:8]+"-metadata.xml")
@@ -268,7 +268,7 @@ func putOidcConfig(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, err)
 		return
 	}
-	defer r.Body.Close()
+	defer r.Body.Close() //nolint:errcheck
 	if err := json.Unmarshal(b, &s.OIDCConfig); err != nil {
 		logger.Error().Err(err).Msg("json unmarshal error")
 		jsonError(w, http.StatusBadRequest, err)
@@ -286,7 +286,7 @@ func putOidcConfig(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, http.StatusBadRequest, err)
 			return
 		}
-		defer res.Body.Close()
+		defer res.Body.Close() //nolint:errcheck
 		type Metadata struct {
 			Issuer string `json:"issuer"`
 		}
@@ -404,7 +404,7 @@ func oidcCallback(w http.ResponseWriter, r *http.Request) {
 		tokens.AccessToken = r.Form.Get("access_token")
 		tokens.IDToken = r.Form.Get("id_token")
 	}
-	var id string = randomString(32)
+	var id = randomString(32)
 	ssite := http.SameSiteDefaultMode
 	if r.Header.Get("X-Forwarded-Proto") == "https" {
 		ssite = http.SameSiteNoneMode
@@ -596,7 +596,7 @@ func GetRouter(log zerolog.Logger, sessionExpiration time.Duration, middlewares 
 				return
 			}
 			f, _ := fSub.Open("index.html")
-			defer f.Close()
+			defer f.Close() //nolint:errcheck
 			b, _ := io.ReadAll(f)
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Header().Set("X-Frame-Options", "deny")

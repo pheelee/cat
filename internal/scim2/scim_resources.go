@@ -106,7 +106,7 @@ func (h *memoryResourceHandler) GetAll(r *http.Request, params scim.ListRequestP
 		}, nil
 	}
 	var (
-		resources []scim.Resource = []scim.Resource{}
+		resources = []scim.Resource{}
 		index     int
 	)
 	for k, v := range h.data {

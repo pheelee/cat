@@ -23,7 +23,7 @@ func TestNewManager(t *testing.T) {
 	// Test existing file
 	f, err := os.CreateTemp("", "")
 	require.NoError(t, err)
-	defer os.Remove(f.Name())
+	defer os.Remove(f.Name()) //nolint:errcheck
 	require.NoError(t, os.WriteFile(f.Name(), []byte("{}"), 0600))
 	require.NoError(t, f.Close())
 	sm, err = NewManager(zerolog.Nop(), time.Hour, f.Name(), "")
@@ -75,7 +75,7 @@ func TestGetSession(t *testing.T) {
 func TestOnAppShutdown(t *testing.T) {
 	dir, err := os.MkdirTemp("", "")
 	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir) //nolint:errcheck
 	sm, err := NewManager(zerolog.Nop(), time.Hour, dir+"/session.yaml", "")
 	require.NoError(t, err)
 	exp := time.Now().Add(time.Hour)
