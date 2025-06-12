@@ -337,8 +337,6 @@ func (h *memoryResourceHandler) Replace(r *http.Request, id string, attributes s
 
 // createID returns a unique identifier for a resource.
 func (h *memoryResourceHandler) createID() string {
-	h.Lock()
-	defer h.Unlock()
 	id := fmt.Sprintf("%06d", h.nextID)
 	h.nextID++
 	return id
