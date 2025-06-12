@@ -123,8 +123,11 @@ func (s *SCIMInstance) SCIMRecorder() http.Handler {
 			StatusCode: http.StatusOK,
 			Request:    string(body),
 		}
-		// Put all headers in an array
+		// Put all headers in an array except for Authorization
 		for k, v := range r.Header {
+			if k == "Authorization" {
+				continue
+			}
 			rec.Headers = append(rec.Headers, k+": "+v[0])
 		}
 		rec.ResponseWriter = w
