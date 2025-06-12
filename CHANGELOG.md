@@ -1,3 +1,10 @@
+## v0.6.3 (2025-06-12)
+
+### Fix
+
+- remove authorization header from output
+- prevent deadlock situation when creating resources
+
 ## v0.6.2 (2025-03-04)
 
 ### Fix
