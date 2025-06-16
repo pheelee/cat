@@ -5,9 +5,9 @@ go 1.24
 toolchain go1.24.2
 
 require (
-	github.com/minio/minio-go/v7 v7.0.92
+	github.com/minio/minio-go/v7 v7.0.93
 	github.com/stretchr/testify v1.10.0
-	github.com/urfave/cli/v2 v2.27.6
+	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/oauth2 v0.30.0
 )
 
