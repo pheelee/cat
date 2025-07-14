@@ -5,12 +5,13 @@ updates:
     schedule:
       interval: "weekly"
 
-    # Only consider minor and patch updates
-    allow:
-      - update-type: "version-update:semver-minor"
-      - update-type: "version-update:semver-patch"
+    # Ignore all major-version bumps
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
-    # Group all allowed updates into one PR
+    # Group remaining (minor + patch) into one PR
     groups:
       all:
         patterns:
@@ -21,18 +22,13 @@ updates:
     schedule:
       interval: "weekly"
 
-    # Only consider minor and patch updates for both prod & dev deps
-    allow:
-      - dependency-type: "production"
-        update-type: "version-update:semver-minor"
-      - dependency-type: "production"
-        update-type: "version-update:semver-patch"
-      - dependency-type: "development"
-        update-type: "version-update:semver-minor"
-      - dependency-type: "development"
-        update-type: "version-update:semver-patch"
+    # Ignore all major-version bumps
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
-    # Merge prod and dev updates into separate PRs
+    # Two buckets: prod vs dev deps
     groups:
       prod-deps:
         dependency-type: "production"
