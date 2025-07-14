@@ -33,7 +33,7 @@
     "vite-plugin-vuetify": "^2.1.1",
     "vue-eslint-parser": "^10.2.0",
     "vue-router": "^4.5.1",
-    "vue-tsc": "^2.2.12"
+    "vue-tsc": "^3.0.1"
   },
   "packageManager": "yarn@4.9.2"
 }
