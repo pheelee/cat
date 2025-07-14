@@ -1,32 +1,44 @@
 version: 2
 updates:
-  - package-ecosystem: "gomod" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "gomod"
+    directory: "/"
     schedule:
       interval: "weekly"
+
+    # Only consider minor and patch updates
+    allow:
+      - update-type: "version-update:semver-minor"
+      - update-type: "version-update:semver-patch"
+
+    # Group all allowed updates into one PR
     groups:
       all:
-        update-types:
-          - "minor"
-          - "patch"
         patterns:
           - "*"
+
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "weekly"
+
+    # Only consider minor and patch updates for both prod & dev deps
+    allow:
+      - dependency-type: "production"
+        update-type: "version-update:semver-minor"
+      - dependency-type: "production"
+        update-type: "version-update:semver-patch"
+      - dependency-type: "development"
+        update-type: "version-update:semver-minor"
+      - dependency-type: "development"
+        update-type: "version-update:semver-patch"
+
+    # Merge prod and dev updates into separate PRs
     groups:
-      dev-deps:
-        dependency-type: "development"
-        update-types:
-          - "minor"
-          - "patch"
-        patterns:
-          - "*"
       prod-deps:
         dependency-type: "production"
-        update-types:
-          - "minor"
-          - "patch"
+        patterns:
+          - "*"
+      dev-deps:
+        dependency-type: "development"
         patterns:
           - "*"
