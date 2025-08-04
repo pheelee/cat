@@ -5,7 +5,7 @@ go 1.24
 toolchain go1.24.2
 
 require (
-	github.com/minio/minio-go/v7 v7.0.94
+	github.com/minio/minio-go/v7 v7.0.95
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/oauth2 v0.30.0
@@ -48,7 +48,7 @@ require (
 
 require (
 	github.com/beevik/etree v1.5.1 // indirect
-	github.com/coreos/go-oidc/v3 v3.14.1
+	github.com/coreos/go-oidc/v3 v3.15.0
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/jonboulle/clockwork v0.5.0 // indirect
