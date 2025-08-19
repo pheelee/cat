@@ -1,3 +1,9 @@
+## v0.6.4 (2025-08-19)
+
+### Fix
+
+- oidc redirect uri get overwritten by incorrect step assignment to stepper
+
 ## v0.6.3 (2025-06-12)
 
 ### Fix
