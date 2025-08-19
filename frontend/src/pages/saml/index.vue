@@ -2,26 +2,27 @@
     <v-container>
         <v-stepper v-model="step" editable>
             <v-stepper-header>
-                <v-stepper-item title="SP setup" value=0></v-stepper-item>
-                <v-stepper-item title="IdP setup" value=1
-                    :rules="[samlSetupComplete]"></v-stepper-item>
-                <v-stepper-item title="Certificates" value=2></v-stepper-item>
-                <v-stepper-item title="Token" value=3></v-stepper-item>
+                <v-stepper-item title="SP setup" :value="0"></v-stepper-item>
+                <v-stepper-item title="IdP setup" :value="1" :rules="[samlSetupComplete]"></v-stepper-item>
+                <v-stepper-item title="Certificates" :value="2"></v-stepper-item>
+                <v-stepper-item title="Token" :value="3"></v-stepper-item>
             </v-stepper-header>
             <v-stepper-window>
-                <v-stepper-window-item value=0>
+                <v-stepper-window-item :value="0">
                     <v-row>
                         <v-col cols="12">
                             <div class="text-body-3 font-weight-heavy mb-n1">Service Provider</div>
                         </v-col>
-                        <v-col cols="12" md="6"><v-text-field variant="underlined" prepend-inner-icon="mdi-key" hint="Entity ID"
-                                persistent-hint v-model="samlConfig.sp_entity_id"></v-text-field></v-col>
-                        <v-col cols="12" md="6"><v-text-field variant="underlined" prepend-inner-icon="mdi-web" hint="ACS URL"
-                                persistent-hint :value="`${baseAddress()}/api/saml/${store.userinfo.id}/acs`"
+                        <v-col cols="12" md="6"><v-text-field variant="underlined" prepend-inner-icon="mdi-key"
+                                hint="Entity ID" persistent-hint
+                                v-model="samlConfig.sp_entity_id"></v-text-field></v-col>
+                        <v-col cols="12" md="6"><v-text-field variant="underlined" prepend-inner-icon="mdi-web"
+                                hint="ACS URL" persistent-hint
+                                :value="`${baseAddress()}/api/saml/${store.userinfo.id}/acs`"
                                 readonly></v-text-field></v-col>
-                        <v-col cols="12" md="12"><v-text-field variant="underlined" prepend-inner-icon="mdi-web" hint="Service Provider Metadata URL"
-                                persistent-hint v-model="samlConfig.sp_metadata_url"
-                                readonly>
+                        <v-col cols="12" md="12"><v-text-field variant="underlined" prepend-inner-icon="mdi-web"
+                                hint="Service Provider Metadata URL" persistent-hint
+                                v-model="samlConfig.sp_metadata_url" readonly>
                                 <template v-slot:append>
                                     <v-btn icon="mdi-download" variant="tonal" color="primary"
                                         :href="`${baseAddress()}/api/saml/${store.userinfo.id}/metadata`"></v-btn>
@@ -52,13 +53,15 @@
                         <v-col cols="12">
                             <div class="text-body-3 font-weight-heavy mb-n1">Attributes</div>
                         </v-col>
-                        <v-col cols="12" md="6"><v-select variant="underlined" prepend-inner-icon="mdi-card-account-details" label="NameID Format" v-model="samlConfig.name_id_format"
-                                :item-value="(i) => i" :item-title="(i) => i.split(':').pop()" :items="nameIdFormats"
+                        <v-col cols="12" md="6"><v-select variant="underlined"
+                                prepend-inner-icon="mdi-card-account-details" label="NameID Format"
+                                v-model="samlConfig.name_id_format" :item-value="(i) => i"
+                                :item-title="(i) => i.split(':').pop()" :items="nameIdFormats"
                                 hint="Name ID format to specify in the service providers metadata"
                                 persistent-hint></v-select></v-col>
                     </v-row>
                 </v-stepper-window-item>
-                <v-stepper-window-item value=1>
+                <v-stepper-window-item :value="1">
                     <v-row>
                         <v-col cols="12">
                             <div class="text-body-3 font-weight-heavy mb-n1">Identity Provider Metadata</div>
@@ -74,7 +77,7 @@
                         </v-col>
                     </v-row>
                 </v-stepper-window-item>
-                <v-stepper-window-item value="2">
+                <v-stepper-window-item :value="2">
                     <v-row>
                         <v-col cols="12">
                             <div class="text-body-3 font-weight-heavy mb-n1">Certificates</div>
@@ -88,10 +91,11 @@
                         </v-col>
                     </v-row>
                 </v-stepper-window-item>
-                <v-stepper-window-item value=3>
+                <v-stepper-window-item :value="3">
                     <v-row class="justify-center">
                         <form action="/api/saml/callback" method="POST">
-                            <v-col cols="12"><v-btn color="primary" type="submit" append-icon="mdi-send" :disabled="updating || !samlSetupComplete()">Start
+                            <v-col cols="12"><v-btn color="primary" type="submit" append-icon="mdi-send"
+                                    :disabled="updating || !samlSetupComplete()">Start
                                     Flow</v-btn></v-col>
                         </form>
                     </v-row>
@@ -104,26 +108,32 @@
                                 <v-card-title>SAML Assertion</v-card-title>
                                 <v-card-text>
                                     <v-container>
-                                    <v-row>
-                                        <v-col cols="6" md="3" class="bg-blue-darken-3">Subject</v-col>
-                                        <v-col cols="6" md="9">{{ samlAssertion.sub }}</v-col>
-                                        <v-col cols="6" md="3" class="bg-blue-darken-3">Issuer</v-col>
-                                        <v-col cols="6" md="9">{{ samlAssertion.iss }}</v-col>
-                                        <v-col cols="6" md="3" class="bg-blue-darken-3">Audience</v-col>
-                                        <v-col cols="6" md="9">{{ samlAssertion.aud }}</v-col>
-                                        <v-col cols="6" md="3" class="bg-blue-darken-3">Issued at</v-col>
-                                        <v-col cols="6" md="9">{{ new Date(samlAssertion.iat*1000).toLocaleString() }}</v-col>
-                                        <v-col cols="6" md="3" class="bg-blue-darken-3">Not before</v-col>
-                                        <v-col cols="6" md="9">{{ new Date(samlAssertion.nbf*1000).toLocaleString() }}</v-col>
-                                        <v-col cols="6" md="3" class="bg-blue-darken-3">Expires</v-col>
-                                        <v-col cols="6" md="9">{{ new Date(samlAssertion.exp*1000).toLocaleString() }}</v-col>
-                                        <v-col cols="12" class="bg-blue-darken-4" style="margin-top: 10px">Claims</v-col>
-                                        <template :key="k" v-for="(v, k) in samlAssertion.attr">
-                                            <v-col cols="6" class="bg-grey-darken-3">{{k}}</v-col>
-                                            <v-col cols="6"><div v-html="v.join('<br />')"></div></v-col>
-                                        </template>
-                                    </v-row>
-                                </v-container>
+                                        <v-row>
+                                            <v-col cols="6" md="3" class="bg-blue-darken-3">Subject</v-col>
+                                            <v-col cols="6" md="9">{{ samlAssertion.sub }}</v-col>
+                                            <v-col cols="6" md="3" class="bg-blue-darken-3">Issuer</v-col>
+                                            <v-col cols="6" md="9">{{ samlAssertion.iss }}</v-col>
+                                            <v-col cols="6" md="3" class="bg-blue-darken-3">Audience</v-col>
+                                            <v-col cols="6" md="9">{{ samlAssertion.aud }}</v-col>
+                                            <v-col cols="6" md="3" class="bg-blue-darken-3">Issued at</v-col>
+                                            <v-col cols="6" md="9">{{ new Date(samlAssertion.iat * 1000).toLocaleString()
+                                                }}</v-col>
+                                            <v-col cols="6" md="3" class="bg-blue-darken-3">Not before</v-col>
+                                            <v-col cols="6" md="9">{{ new Date(samlAssertion.nbf * 1000).toLocaleString()
+                                                }}</v-col>
+                                            <v-col cols="6" md="3" class="bg-blue-darken-3">Expires</v-col>
+                                            <v-col cols="6" md="9">{{ new Date(samlAssertion.exp * 1000).toLocaleString()
+                                                }}</v-col>
+                                            <v-col cols="12" class="bg-blue-darken-4"
+                                                style="margin-top: 10px">Claims</v-col>
+                                            <template :key="k" v-for="(v, k) in samlAssertion.attr">
+                                                <v-col cols="6" class="bg-grey-darken-3">{{ k }}</v-col>
+                                                <v-col cols="6">
+                                                    <div v-html="v.join('<br />')"></div>
+                                                </v-col>
+                                            </template>
+                                        </v-row>
+                                    </v-container>
                                 </v-card-text>
                             </v-card>
                         </v-col>
@@ -150,7 +160,7 @@ const snackText = ref('');
 const updating = ref(true);
 
 const { mdAndUp } = useDisplay()
-const samlAssertion = ref<SAMLAssertion|undefined>(undefined)
+const samlAssertion = ref<SAMLAssertion | undefined>(undefined)
 const samlConfig = ref<SAMLConfig>({
     idp_url: '',
     sp_entity_id: '',
@@ -233,7 +243,8 @@ const nameIdFormats = ref([
     "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
 ])
 
-watch(step, () => {
+watch(step, (to) => {
+    if (to == 0) return
     updating.value = true
     samlApi.put(samlConfig.value).then((res: SAMLConfig) => {
         samlConfig.value = res
@@ -256,7 +267,7 @@ const fetchConfig = () => {
         // }
         samlConfig.value = config
         api.getTokens().then((data: Tokens) => {
-            if(data.saml_assertion != null){
+            if (data.saml_assertion != null) {
                 samlAssertion.value = data.saml_assertion
             }
         })

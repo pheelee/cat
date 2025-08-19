@@ -2,11 +2,11 @@
     <v-container>
         <v-stepper v-model="step" editable>
             <v-stepper-header>
-                <v-stepper-item title="Client Setup" value=0 :rules=[oidcSetupComplete]></v-stepper-item>
-                <v-stepper-item title="Token" value=1></v-stepper-item>
+                <v-stepper-item title="Client Setup" :value="0" :rules="[oidcSetupComplete]"></v-stepper-item>
+                <v-stepper-item title="Token" :value="1"></v-stepper-item>
             </v-stepper-header>
             <v-stepper-window>
-                <v-stepper-window-item value="0">
+                <v-stepper-window-item :value="0">
                     <v-sheet elevation="12">
                         <v-container>
                             <v-row>
@@ -59,7 +59,7 @@
                         </v-container>
                     </v-sheet>
                 </v-stepper-window-item>
-                <v-stepper-window-item value="1">
+                <v-stepper-window-item :value="1">
                     <v-row class="justify-center">
                         <form action="/api/oidc/start" method="POST">
                             <v-col cols="12"><v-btn color="primary" type="submit" append-icon="mdi-send"
@@ -165,19 +165,6 @@ const oidcParams = ref<OIDCConfig>({
     }
 })
 
-watch(step, () => {
-    updating.value = true
-    oidcApi.put(oidcParams.value).then((data: OIDCConfig) => {
-        oidcParams.value = data
-        updating.value = false
-    }).catch((error) => {
-        snackText.value = error
-        snackcolor.value = 'error'
-        snackbar.value = true
-    })
-})
-
-
 onMounted(() => {
     updating.value = true
     oidcApi.get().then((data: OIDCConfig) => {
@@ -198,7 +185,18 @@ onMounted(() => {
                 }
             }
         })
-
+    }).catch((error) => {
+        snackText.value = error
+        snackcolor.value = 'error'
+        snackbar.value = true
+    })
+})
+watch(step, (to) => {
+    if (to == 0) return
+    updating.value = true
+    oidcApi.put(oidcParams.value).then((data: OIDCConfig) => {
+        oidcParams.value = data
+        updating.value = false
     }).catch((error) => {
         snackText.value = error
         snackcolor.value = 'error'
