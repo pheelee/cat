@@ -1,3 +1,10 @@
+## v0.6.5 (2025-09-02)
+
+### Fix
+
+- **scim**: use uuid to avoid resource collision between users and groups
+- check wether filtervalidator is not nil to avoid panic
+
 ## v0.6.4 (2025-08-19)
 
 ### Fix
