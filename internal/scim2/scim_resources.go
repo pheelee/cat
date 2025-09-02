@@ -118,9 +118,11 @@ func (h *memoryResourceHandler) GetAll(r *http.Request, params scim.ListRequestP
 			break
 		}
 
-		validator := internal.NewFilterValidator(params.FilterValidator.GetFilter(), h.schema)
-		if err := validator.PassesFilter(v.attributes); err != nil {
-			continue
+		if params.FilterValidator != nil {
+			validator := internal.NewFilterValidator(params.FilterValidator.GetFilter(), h.schema)
+			if err := validator.PassesFilter(v.attributes); err != nil {
+				continue
+			}
 		}
 
 		resources = append(resources, scim.Resource{
