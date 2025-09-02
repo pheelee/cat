@@ -12,12 +12,12 @@ import (
 	internal "github.com/elimity-com/scim/filter"
 	"github.com/elimity-com/scim/optional"
 	"github.com/elimity-com/scim/schema"
+	"github.com/google/uuid"
 	"github.com/scim2/filter-parser/v2"
 )
 
 type memoryResourceHandler struct {
 	sync.Mutex
-	nextID int
 	data   map[string]resourceData
 	schema schema.Schema
 }
@@ -339,7 +339,5 @@ func (h *memoryResourceHandler) Replace(r *http.Request, id string, attributes s
 
 // createID returns a unique identifier for a resource.
 func (h *memoryResourceHandler) createID() string {
-	id := fmt.Sprintf("%06d", h.nextID)
-	h.nextID++
-	return id
+	return uuid.NewString()
 }

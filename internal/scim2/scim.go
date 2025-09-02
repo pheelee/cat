@@ -71,7 +71,6 @@ func GetServer(endpoint string) (*SCIMInstance, error) {
 			Handler: &memoryResourceHandler{
 				data:   make(map[string]resourceData),
 				schema: schema.CoreUserSchema(),
-				nextID: 1,
 			},
 		},
 		{
@@ -84,7 +83,6 @@ func GetServer(endpoint string) (*SCIMInstance, error) {
 			Handler: &memoryResourceHandler{
 				data:   make(map[string]resourceData),
 				schema: schema.CoreGroupSchema(),
-				nextID: 1,
 			},
 		},
 	}
