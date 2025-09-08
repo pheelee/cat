@@ -1,6 +1,6 @@
 module github.com/pheelee/Cat
 
-go 1.24
+go 1.24.0
 
 toolchain go1.24.2
 
@@ -9,7 +9,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.95
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
-	golang.org/x/oauth2 v0.30.0
+	golang.org/x/oauth2 v0.31.0
 )
 
 require (
