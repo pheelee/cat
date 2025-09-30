@@ -1,5 +1,5 @@
 <template>
-    <v-container>
+    <v-container fluid>
         <h4 class="text-h4 font-weight-bold">Users</h4>
         <h6 class="text-h6 font-weight-regular">provisioned by JIT or SCIM</h6>
         <v-row style="margin-bottom:1rem;">
@@ -36,6 +36,16 @@
                                 </v-text-field>
                             </v-col>
                         </v-row>
+                        <v-container fluid class="text-caption">
+                            <h3>Tipps</h3>
+                            <ul>
+                                <li>
+                                    When using Microsoft Entra ID please ensure you add ?aadOptscim062020 to the end of
+                                    the URL to use the
+                                    feature flag
+                                </li>
+                            </ul>
+                        </v-container>
                     </v-expansion-panel-text>
                 </v-expansion-panel>
                 <v-expansion-panel title="JIT Settings" :disabled="provisioning_config.strategy != Strategy.JIT">
@@ -126,7 +136,7 @@
                         <tr v-for="user in filteredUsers" :key="user.id">
                             <td><v-chip variant="flat"
                                     :color="user.protocol === 'OIDC' ? 'deep-purple-darken-2' : 'secondary'">{{
-                                    user.protocol }}</v-chip>
+                                        user.protocol }}</v-chip>
                             </td>
                             <td>{{ user.id }}</td>
                             <td>{{ user.display_name }}</td>
@@ -143,48 +153,83 @@
                 </v-table>
             </div>
             <v-row v-if="provisioning_config.strategy == Strategy.SCIM">
-                <v-col>
-                    <h3 class="section-header">SCIM Log <v-btn variant="text" icon="mdi-update" color="secondary"
-                            @click="fetchSCIMLog"></v-btn></h3>
-                    <h5 v-if="scimLog.length == 0">No logs found</h5>
-                    <v-expansion-panels>
-                        <v-expansion-panel v-for="(log, i) in scimLog" :key="i">
-                            <v-expansion-panel-title>
-                                <v-row class="align-center">
-                                    <v-col cols="1"><v-chip variant="text" :color="methodColor(log.method)">{{
-                                            log.method
-                                            }}</v-chip></v-col>
-                                    <v-col cols="10"><v-text-field variant="solo-filled" v-model="log.url" readonly
-                                            hide-details></v-text-field></v-col>
-                                    <v-col cols="1"><v-chip variant="tonal" label
-                                            :color="statusColor(log.status_code)">{{
-                                            log.status_code }}</v-chip></v-col>
-                                </v-row>
-                            </v-expansion-panel-title>
-                            <v-expansion-panel-text>
-                                {{ localDate(log.timestamp) }}
-                                <v-tabs v-model="scimLogTab" color="secondary">
-                                    <v-tab value="headers">Headers</v-tab>
-                                    <v-tab value="request">Request</v-tab>
-                                    <v-tab value="response">Response</v-tab>
-                                </v-tabs>
-                                <v-tabs-window v-model="scimLogTab">
-                                    <v-container>
-                                        <v-tabs-window-item value="headers">
-                                            <pre v-html="colorizeHeaders(log.headers)"></pre>
-                                        </v-tabs-window-item>
-                                        <v-tabs-window-item value="request">
-                                            <pre v-html="log.request"></pre>
-                                        </v-tabs-window-item>
-                                        <v-tabs-window-item value="response">
-                                            <pre v-html="log.response"></pre>
-                                        </v-tabs-window-item>
-                                    </v-container>
-                                </v-tabs-window>
-                            </v-expansion-panel-text>
-                        </v-expansion-panel>
-                    </v-expansion-panels>
-                </v-col>
+                <v-container fluid>
+                    <v-row>
+                        <v-col cols="6">
+                            <v-tabs v-model="scimTab" color="secondary">
+                                <v-tab value="users" prepend-icon="mdi-account">Users</v-tab>
+                                <v-tab value="groups" prepend-icon="mdi-account-multiple">Groups</v-tab>
+                                <v-tab value="logs" prepend-icon="mdi-text-box">Logs</v-tab>
+                            </v-tabs>
+                        </v-col>
+                        <v-col cols="6" class="d-flex align-center justify-end ga-2">
+                            <v-text-field :disabled="scimDataLoading" density="compact" hide-details
+                                v-model="scimSearch" label="Search" variant="outlined" prepend-inner-icon="mdi-magnify"
+                                clearable></v-text-field>
+                            <v-btn :disabled="scimDataLoading" variant="tonal" color="secondary"
+                                @click="fetchScimData">Fetch SCIM
+                                Data</v-btn>
+                            <v-btn :disabled="scimDataLoading" variant="tonal" color="secondary"
+                                @click="fetchSCIMLog">Fetch SCIM
+                                Logs</v-btn>
+                        </v-col>
+                    </v-row>
+                    <v-progress-linear indeterminate height="1" v-if="scimDataLoading"></v-progress-linear>
+                    <div style="height:1px" v-else></div>
+                    <v-tabs-window v-model="scimTab">
+                        <v-tabs-window-item value="users">
+                            <v-data-table :items="scimUsers" :search="scimSearch"></v-data-table>
+                        </v-tabs-window-item>
+                        <v-tabs-window-item value="groups">
+                            <v-data-table :items="scimGroups" :search="scimSearch"></v-data-table>
+                        </v-tabs-window-item>
+                        <v-tabs-window-item value="logs">
+                            <v-col>
+                                <h5 v-if="scimLog.length == 0">No logs found</h5>
+                                <v-expansion-panels>
+                                    <v-expansion-panel v-for="(log, i) in scimLogEntries" :key="i">
+                                        <v-expansion-panel-title>
+                                            <v-row class="align-center">
+                                                <v-col cols="1"><v-chip variant="text"
+                                                        :color="methodColor(log.method)">{{
+                                                            log.method
+                                                        }}</v-chip></v-col>
+                                                <v-col cols="2">{{ localDate(log.timestamp) }}</v-col>
+                                                <v-col cols="8"><v-text-field variant="solo-filled" v-model="log.url"
+                                                        readonly hide-details></v-text-field></v-col>
+                                                <v-col cols="1"><v-chip variant="tonal" label
+                                                        :color="statusColor(log.status_code)">{{
+                                                            log.status_code }}</v-chip></v-col>
+                                            </v-row>
+                                        </v-expansion-panel-title>
+                                        <v-expansion-panel-text>
+                                            <v-tabs v-model="scimLogTab" color="secondary">
+                                                <v-tab value="headers">Headers</v-tab>
+                                                <v-tab value="request">Request</v-tab>
+                                                <v-tab value="response">Response</v-tab>
+                                            </v-tabs>
+                                            <v-tabs-window v-model="scimLogTab">
+                                                <v-container>
+                                                    <v-tabs-window-item value="headers">
+                                                        <pre v-html="colorizeHeaders(log.headers)"></pre>
+                                                    </v-tabs-window-item>
+                                                    <v-tabs-window-item value="request">
+                                                        <pre v-html="log.request"></pre>
+                                                    </v-tabs-window-item>
+                                                    <v-tabs-window-item value="response">
+                                                        <pre v-html="log.response"></pre>
+                                                    </v-tabs-window-item>
+                                                </v-container>
+                                            </v-tabs-window>
+                                        </v-expansion-panel-text>
+                                    </v-expansion-panel>
+                                </v-expansion-panels>
+                                <v-pagination v-model="scimLogPage" :length="scimLog.length / scimLogEntriesPerPage"
+                                    :total-visible="10"></v-pagination>
+                            </v-col>
+                        </v-tabs-window-item>
+                    </v-tabs-window>
+                </v-container>
             </v-row>
         </div>
     </v-container>
@@ -221,11 +266,37 @@
 import provisioningApi, { Config, User, Strategy, SCIMLog } from '@/api/provisioning'
 import copyToClipboard from '@/components/copyToClipboard.vue';
 import { computed, ref } from 'vue';
+
+type scimUser = {
+    active: boolean
+    id: string
+    externalId: string
+    username: string
+    displayName: string
+    title: string
+    email: string
+}
+
+type scimGroup = {
+    id: string
+    display_name: string
+    members: string[]
+}
+
 const searchString = ref('')
 const claimMappingUpdateColor = ref('secondary')
 const users = ref<User[]>([])
+const scimSearch = ref('')
+const scimUsers = ref<Array<scimUser>>([])
+const scimGroups = ref<Array<scimGroup>>([])
 const scimLog = ref<SCIMLog[]>([])
+const scimTab = ref<string>('explorer')
+const scimDataLoading = ref<boolean>(false)
 const scimLogTab = ref<string>('response')
+
+const scimLogPage = ref<number>(1)
+const scimLogEntriesPerPage = ref<number>(8)
+
 const provisioning_config = ref<Config>({
     enabled: false,
     strategy: Strategy.JIT,
@@ -250,6 +321,10 @@ const provisioning_config = ref<Config>({
         url: "",
         token: ""
     }
+})
+
+const scimLogEntries = computed(() => {
+    return scimLog.value.slice((scimLogPage.value - 1) * scimLogEntriesPerPage.value, scimLogPage.value * scimLogEntriesPerPage.value)
 })
 
 const localDate = (date: string) => {
@@ -369,9 +444,11 @@ provisioningApi.getConfig().then((data) => {
         }
     })
     fetchSCIMLog();
+    fetchScimData();
 })
 
 const fetchSCIMLog = () => {
+    scimDataLoading.value = true
     provisioningApi.getSCIMLog().then((log) => {
         log.forEach((l) => {
             if (l.request)
@@ -382,6 +459,8 @@ const fetchSCIMLog = () => {
         // Reverse log
         log.reverse()
         scimLog.value = log
+    }).finally(() => {
+        scimDataLoading.value = false
     })
 }
 
@@ -392,6 +471,49 @@ const updateConfig = () => {
         setTimeout(() => {
             claimMappingUpdateColor.value = 'secondary'
         }, 3000)
+    })
+}
+
+const fetchScimData = () => {
+    scimDataLoading.value = true
+    fetch(provisioning_config.value.scim.url + '/Users', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + provisioning_config.value.scim.token
+        }
+    }).then(repsponse => repsponse.json()).then(data => {
+        scimUsers.value = data.Resources.map((user: any) => {
+            return {
+                active: user.active,
+                id: user.id,
+                externalId: user.externalId,
+                username: user.userName,
+                displayName: user.displayName,
+                title: user.title,
+                email: user.emails ? user.emails[0].value : '',
+            }
+        })
+    }).then(() => {
+        fetch(provisioning_config.value.scim.url + '/Groups', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + provisioning_config.value.scim.token
+            }
+        }).then(repsponse => repsponse.json()).then(data => {
+            scimGroups.value = data.Resources.map((group: any) => {
+                return {
+                    id: group.id,
+                    display_name: group.displayName,
+                    members: group.members.map((member: any) => {
+                        return scimUsers.value.find((user: any) => user.id === member.value)?.username
+                    })
+                }
+            })
+        })
+    }).finally(() => {
+        scimDataLoading.value = false
     })
 }
 
