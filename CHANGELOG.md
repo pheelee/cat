@@ -1,3 +1,9 @@
+## v0.7.0 (2025-09-30)
+
+### Feat
+
+- add scim browser for user and groups
+
 ## v0.6.5 (2025-09-02)
 
 ### Fix
