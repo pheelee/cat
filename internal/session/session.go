@@ -222,8 +222,12 @@ func (s *sessionManager) NewSession(ip string, sessId string) (*Session, error) 
 			Config: ProvisioningConfig{
 				Enabled:  false,
 				Strategy: JITProvisioning,
-				JIT:      &JITConfig{},
-				SCIM:     &scimConfig{},
+				JIT: &JITConfig{
+					UpdateOnLogin: false,
+					SAMLMappings:  defaultClaimMappings,
+					OIDCMappings:  defaultClaimMappings,
+				},
+				SCIM: &scimConfig{},
 			},
 			Users:  map[string]User{},
 			Groups: map[string]Group{},
