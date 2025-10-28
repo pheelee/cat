@@ -436,15 +436,17 @@ const filteredUsers = computed(() => {
     })
 })
 
-provisioningApi.getConfig().then((data) => {
+provisioningApi.getConfig().then((data: Config) => {
     provisioning_config.value = data
     provisioningApi.getUsers().then((userMap) => {
         if (Object.keys(userMap).length > 0) {
             users.value = Object.values(userMap)
         }
     })
-    fetchSCIMLog();
-    fetchScimData();
+    if (data.enabled && data.strategy == Strategy.SCIM) {
+        fetchSCIMLog();
+        fetchScimData();
+    }
 })
 
 const fetchSCIMLog = () => {
