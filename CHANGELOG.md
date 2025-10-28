@@ -1,3 +1,11 @@
+## v0.7.1 (2025-10-28)
+
+### Fix
+
+- weird frontend build error in the vue-router
+- **backend**: send default claims mapping for jit
+- **frontend**: don't load data and logs if scim is not enabled
+
 ## v0.7.0 (2025-09-30)
 
 ### Feat
