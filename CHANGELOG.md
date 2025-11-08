@@ -1,3 +1,9 @@
+## v0.7.3 (2025-11-08)
+
+### Fix
+
+- **deps**: update module golang.org/x/oauth2 to v0.33.0 (#107)
+
 ## v0.7.2 (2025-11-05)
 
 ### Fix
