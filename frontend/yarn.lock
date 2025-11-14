@@ -1157,7 +1157,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vue/language-core@npm:^3.1.2":
+"@vue/language-core@npm:^3.1.3":
   version: 3.1.3
   resolution: "@vue/language-core@npm:3.1.3"
   dependencies:
@@ -2444,7 +2444,7 @@ __metadata:
     typescript: "npm:^5.9.3"
     unplugin-fonts: "npm:^1.4.0"
     unplugin-vue-components: "npm:^28.8.0"
-    unplugin-vue-router: "npm:^0.16.0"
+    unplugin-vue-router: "npm:^0.17.0"
     vite: "npm:^6.4.1"
     vite-plugin-vuetify: "npm:^2.1.2"
     vue: "npm:^3.5.22"
@@ -4542,13 +4542,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"unplugin-vue-router@npm:^0.16.0":
-  version: 0.16.1
-  resolution: "unplugin-vue-router@npm:0.16.1"
+"unplugin-vue-router@npm:^0.17.0":
+  version: 0.17.0
+  resolution: "unplugin-vue-router@npm:0.17.0"
   dependencies:
     "@babel/generator": "npm:^7.28.5"
     "@vue-macros/common": "npm:^3.1.1"
-    "@vue/language-core": "npm:^3.1.2"
+    "@vue/language-core": "npm:^3.1.3"
     ast-walker-scope: "npm:^0.8.3"
     chokidar: "npm:^4.0.3"
     json5: "npm:^2.2.3"
@@ -4569,7 +4569,7 @@ __metadata:
   peerDependenciesMeta:
     vue-router:
       optional: true
-  checksum: 10c0/a421747a320f4e7c056761f97ca6e1e2aff6ad4e4cd3b34dde599e525e6186b621739f033522b1a720fd68bf4e670a00a278120a613bb597a3ff18635eaef90f
+  checksum: 10c0/0ac5938fed468b5a7e05dc4ced2ed53bd9b57c51b9f046bb0ba5f92ec12f14b84d30f79e7c2ecbf5a3e6b9b58eb2ddc35cf3feddc02748005b7a51a0b88cfa75
   languageName: node
   linkType: hard
 
@@ -4756,8 +4756,8 @@ __metadata:
   linkType: hard
 
 "vuetify@npm:^3.10.7":
-  version: 3.10.10
-  resolution: "vuetify@npm:3.10.10"
+  version: 3.10.11
+  resolution: "vuetify@npm:3.10.11"
   peerDependencies:
     typescript: ">=4.7"
     vite-plugin-vuetify: ">=2.1.0"
@@ -4770,7 +4770,7 @@ __metadata:
       optional: true
     webpack-plugin-vuetify:
       optional: true
-  checksum: 10c0/f41141d031b41227fb113c0ffa40bd75bd34f6001c7ba48f3b16c4e75a5f88e47b0acb879cbb41cc8a7168fd699adf4835ecba34d32eaa5fb93e81757739adfa
+  checksum: 10c0/e323f3fab506d6fc042887b7eb9a18af7c5718a6c6962e4386943ea277ab1f6feaa84027d5b684dc5be06844935a7b3629eb2e27ceacc32e4e909251bdc8f801
   languageName: node
   linkType: hard
 
