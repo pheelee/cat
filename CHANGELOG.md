@@ -1,3 +1,9 @@
+## v0.7.4 (2025-11-21)
+
+### Fix
+
+- **deps**: update all non-major dependencies (#118)
+
 ## v0.7.3 (2025-11-08)
 
 ### Fix
