@@ -984,12 +984,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@volar/language-core@npm:2.4.23":
-  version: 2.4.23
-  resolution: "@volar/language-core@npm:2.4.23"
+"@volar/language-core@npm:2.4.26":
+  version: 2.4.26
+  resolution: "@volar/language-core@npm:2.4.26"
   dependencies:
-    "@volar/source-map": "npm:2.4.23"
-  checksum: 10c0/1b8d60c7c0faa29ef5ec46dd2b673227592d0697753767e4df088f7c2d93843828116fe59472bb9d604ba653400be32a538e985730844b1af4f42a7075e62049
+    "@volar/source-map": "npm:2.4.26"
+  checksum: 10c0/f53b24a51234217db33bd694620abd472842c801002afb420558e2c5e63a3c5cc3eb3463513550c49491b07771fe4d12c23d87792157b7a377e7e554242b0d49
   languageName: node
   linkType: hard
 
@@ -1000,10 +1000,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@volar/source-map@npm:2.4.23":
-  version: 2.4.23
-  resolution: "@volar/source-map@npm:2.4.23"
-  checksum: 10c0/08af690093b811d0a37bdd8d306755b4e7f1535b67625c26f6fa6eb9ae081e24c55dabc8231ce8856aa1b731a5ac137b3f0449b34c093923c3545afdbe462c7a
+"@volar/source-map@npm:2.4.26":
+  version: 2.4.26
+  resolution: "@volar/source-map@npm:2.4.26"
+  checksum: 10c0/a8b8003b8aadea452f95135f175ef5085ff765ff5d595c57f6ec20341762d9ea03192f2b421357ce66072f2d51ff38b68d172ad13b8792bd33933e4ed16312c4
   languageName: node
   linkType: hard
 
@@ -1166,11 +1166,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vue/language-core@npm:^3.1.5":
-  version: 3.1.5
-  resolution: "@vue/language-core@npm:3.1.5"
+"@vue/language-core@npm:^3.1.8":
+  version: 3.1.8
+  resolution: "@vue/language-core@npm:3.1.8"
   dependencies:
-    "@volar/language-core": "npm:2.4.23"
+    "@volar/language-core": "npm:2.4.26"
     "@vue/compiler-dom": "npm:^3.5.0"
     "@vue/shared": "npm:^3.5.0"
     alien-signals: "npm:^3.0.0"
@@ -1182,7 +1182,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/10e960d85c06edff0d5217cc4e54dd59ad2308ce0d6202720cd4d56fc2237f01f1f51cf04bdb0ea80796b40beecffa8f9428eaaceaa5642d4a8a0ae60bd5bc15
+  checksum: 10c0/5b685bfbb43b7a0942bc299540eb08a2d39526990d91f4809f111943178b42f9f56103d3eadf24ef8ac7a44532123709fde42cc68561027d15b857f4bd37bff6
   languageName: node
   linkType: hard
 
@@ -4572,12 +4572,12 @@ __metadata:
   linkType: hard
 
 "unplugin-vue-router@npm:^0.19.0":
-  version: 0.19.0
-  resolution: "unplugin-vue-router@npm:0.19.0"
+  version: 0.19.1
+  resolution: "unplugin-vue-router@npm:0.19.1"
   dependencies:
     "@babel/generator": "npm:^7.28.5"
     "@vue-macros/common": "npm:^3.1.1"
-    "@vue/language-core": "npm:^3.1.5"
+    "@vue/language-core": "npm:^3.1.8"
     ast-walker-scope: "npm:^0.8.3"
     chokidar: "npm:^5.0.0"
     json5: "npm:^2.2.3"
@@ -4598,7 +4598,7 @@ __metadata:
   peerDependenciesMeta:
     vue-router:
       optional: true
-  checksum: 10c0/4ccdcea6984c7e9b7d2196a26b38a5b28168b9b6b1fb81eeef349aad8cccff5999d99124b2e20cdf612a350d971de1c02f0a98509efafb8bd0312865d4aacd76
+  checksum: 10c0/755996e786756ddc99282825e9acb7f7e219c81abee9765eda26b1ddc83ba4f3d3a7e435b2e9659bed50c5d16f0f57aa3bce59d5c0380e68ba91a44410d87edc
   languageName: node
   linkType: hard
 
