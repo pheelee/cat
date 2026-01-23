@@ -508,7 +508,7 @@ const fetchScimData = () => {
                 return {
                     id: group.id,
                     display_name: group.displayName,
-                    members: group.members.map((member: any) => {
+                    members: group.members === null ? [] : group.members.map((member: any) => {
                         return scimUsers.value.find((user: any) => user.id === member.value)?.username
                     })
                 }
