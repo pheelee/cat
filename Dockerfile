@@ -7,7 +7,7 @@ RUN echo VITE_APP_VERSION=$BUILD_VERSION > .env; \
     yarn install; \
     yarn build
 
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 ARG GOOS=linux
 ARG GOARCH=amd64
 ARG GOARM=7
