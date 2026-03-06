@@ -1,3 +1,9 @@
+## v0.7.9 (2026-03-06)
+
+### Fix
+
+- **deps**: update module github.com/minio/minio-go/v7 to v7.0.99 (#185)
+
 ## v0.7.8 (2026-02-08)
 
 ### Fix
