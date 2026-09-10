@@ -1,3 +1,10 @@
+## v0.7.11 (2026-09-10)
+
+### Fix
+
+- **deps**: update all non-major dependencies (#217)
+- **deps**: update github.com/elimity-com/scim digest to 2641426 (#216) [skip ci]
+
 ## v0.7.10 (2026-03-08)
 
 ### Fix
