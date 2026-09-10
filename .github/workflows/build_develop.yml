@@ -47,9 +47,3 @@ jobs:
           push: true
           build-args: BUILD_VERSION=${{ env.version }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.version }}, ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop
-
-      - name: Trigger container updater
-        uses: joelwmale/webhook-action@6cebc9d7dc8435b684e1e1945c0013d9023b76a4
-        with:
-          url: ${{ secrets.WEBHOOK_URL }}
-          headers: '{"Authorization": "Bearer ${{ secrets.WEBHOOK_TOKEN }}"}'
