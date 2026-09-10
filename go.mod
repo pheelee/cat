@@ -20,6 +20,8 @@ require (
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/q-uint/parser v0.3.1 // indirect
+	github.com/q-uint/xsd-datetime v1.0.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/tinylib/msgp v1.6.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
@@ -31,11 +33,11 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/di-wu/parser v0.3.0 // indirect
 	github.com/di-wu/xsd-datetime v1.0.0 // indirect
-	github.com/elimity-com/scim v0.0.0-20240320110924-172bf2aee9c8
+	github.com/elimity-com/scim v0.0.0-20260728105928-2641426a1539
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scim2/filter-parser/v2 v2.2.0
+	github.com/scim2/filter-parser/v2 v2.3.1
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 )
