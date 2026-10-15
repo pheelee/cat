@@ -53,7 +53,7 @@ require (
 require (
 	github.com/beevik/etree v1.6.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.21.0
-	github.com/go-chi/chi/v5 v5.4.0
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/mattermost/xml-roundtrip-validator v0.1.0 // indirect
