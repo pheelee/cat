@@ -2453,7 +2453,7 @@ __metadata:
     eslint-plugin-promise: "npm:^7.2.1"
     eslint-plugin-vue: "npm:^10.7.0"
     roboto-fontface: "npm:^0.10.0"
-    sass: "npm:1.105.1"
+    sass: "npm:1.105.2"
     typescript: "npm:^5.9.3"
     unplugin-fonts: "npm:^1.4.0"
     unplugin-vue-components: "npm:^28.8.0"
@@ -3996,9 +3996,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sass@npm:1.105.1":
-  version: 1.105.1
-  resolution: "sass@npm:1.105.1"
+"sass@npm:1.105.2":
+  version: 1.105.2
+  resolution: "sass@npm:1.105.2"
   dependencies:
     "@parcel/watcher": "npm:^2.4.1"
     chokidar: "npm:^5.0.0"
@@ -4009,7 +4009,7 @@ __metadata:
       optional: true
   bin:
     sass: sass.js
-  checksum: 10c0/07246d9a9cc3c7974d28e03b394791c65d6a8f701d4ed2f130f5cb72ff3ef5626e5e66afb067348b2ae87011c52e18cd29f294025a6430851ee8617ef8c94f38
+  checksum: 10c0/2e219603b075559d834f8f56b03ed1b5d61a88b3fb85a92baef238a653242ef486bbe71f33daf9b8dd0f30b4f627c434e594e35591214b8b177d3b03ac24925c
   languageName: node
   linkType: hard
 
@@ -4739,8 +4739,8 @@ __metadata:
   linkType: hard
 
 "vuetify@npm:^3.11.7":
-  version: 3.13.6
-  resolution: "vuetify@npm:3.13.6"
+  version: 3.13.7
+  resolution: "vuetify@npm:3.13.7"
   peerDependencies:
     typescript: ">=4.7"
     vite-plugin-vuetify: ">=2.1.0"
@@ -4753,7 +4753,7 @@ __metadata:
       optional: true
     webpack-plugin-vuetify:
       optional: true
-  checksum: 10c0/d92949c5bd1f00a4f81d3a4b9121c2bab6758a31b7098f937d223f781531f101b233594a2b8ab835c7f42a973dee5f14a60b2923b49f801a10b4322e42b5cfbf
+  checksum: 10c0/326b1005ce05dc855f4df61ea5731700f9a123526e5ea16651a560ef6f3bdcf055cc0babe759ec2870c06ab64610f70790ae93b98b7a52e21c3f3799034a4998
   languageName: node
   linkType: hard
 
