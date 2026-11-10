@@ -7,13 +7,14 @@ require (
 	github.com/minio/minio-go/v7 v7.4.1
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli/v2 v2.27.7
-	golang.org/x/oauth2 v0.37.0
+	golang.org/x/oauth2 v0.38.0
 )
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
@@ -46,18 +47,18 @@ require (
 )
 
 require (
-	github.com/crewjam/saml v0.5.1
+	github.com/crewjam/saml v0.6.3
 	golang.org/x/crypto v0.57.0 // indirect
 )
 
 require (
-	github.com/beevik/etree v1.6.0 // indirect
+	github.com/beevik/etree v1.8.1 // indirect
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/mattermost/xml-roundtrip-validator v0.1.0 // indirect
-	github.com/russellhaering/goxmldsig v1.6.0 // indirect
+	github.com/russellhaering/goxmldsig v1.6.1 // indirect
 )
 
 require (
