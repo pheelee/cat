@@ -393,7 +393,7 @@ func (s sessionManager) Middleware(next http.Handler) http.Handler {
 			// Check if cookie is present otherwise create one
 			c, err := r.Cookie(string(SessionKey))
 			if err != nil || c.Value != se.ID {
-				http.SetCookie(w, &http.Cookie{
+				http.SetCookie(w, &http.Cookie{ //#nosec G124
 					Name:     string(SessionKey),
 					Value:    se.ID,
 					Path:     "/",
@@ -430,7 +430,7 @@ func (s sessionManager) Middleware(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		c = &http.Cookie{
+		c = &http.Cookie{ //#nosec G124 --dev mode allowed
 			Name:     string(SessionKey),
 			Value:    se.ID,
 			Path:     "/",
