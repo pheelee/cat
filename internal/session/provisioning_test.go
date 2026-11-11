@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/crewjam/saml/samlsp"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -182,7 +182,7 @@ func TestAddOrUpdateUserFromSAMLAssertion(t *testing.T) {
 	}
 
 	claims := samlsp.JWTSessionClaims{
-		StandardClaims: jwt.StandardClaims{ //nolint
+		RegisteredClaims: jwt.RegisteredClaims{ //nolint
 			Subject: "12345",
 		},
 		Attributes: samlsp.Attributes{
@@ -212,7 +212,7 @@ func TestAddOrUpdateUserFromSAMLAssertion(t *testing.T) {
 	assert.Equal(t, "John", j.Users["12345"].FirstName)
 	// Test invalid claims
 	invalidClaims := samlsp.JWTSessionClaims{
-		StandardClaims: jwt.StandardClaims{ //nolint
+		RegisteredClaims: jwt.RegisteredClaims{ //nolint
 			Subject: "12345",
 		},
 		Attributes: samlsp.Attributes{

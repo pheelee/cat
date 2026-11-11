@@ -132,7 +132,7 @@ func putSamlConfig(w http.ResponseWriter, r *http.Request) {
 	s.SAMLConfig = req
 	if (s.SAMLConfig.IdpMetadata == "" && s.SAMLConfig.IdpUrl != "") || (currentIdpUrl != req.IdpUrl) {
 		c := http.Client{Timeout: 5 * time.Second}
-		res, err := c.Get(s.SAMLConfig.IdpUrl)
+		res, err := c.Get(s.SAMLConfig.IdpUrl) //#nosec G704
 		if err != nil {
 			logger.Error().Err(err).Msg("get idp metadata error")
 			jsonError(w, http.StatusBadRequest, err)
@@ -212,7 +212,7 @@ func samlCallback(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("X-Forwarded-Proto") == "https" {
 		ssite = http.SameSiteNoneMode
 	}
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //#nosec G124 --dev mode allowed
 		Name:     "tokens",
 		Value:    id,
 		Path:     "/",
@@ -280,7 +280,7 @@ func putOidcConfig(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(s.OIDCConfig.MetadataUrl, "/.well-known/openid-configuration") {
 			s.OIDCConfig.MetadataUrl += "/.well-known/openid-configuration"
 		}
-		res, err := http.Get(s.OIDCConfig.MetadataUrl)
+		res, err := http.Get(s.OIDCConfig.MetadataUrl) //#nosec G704
 		if err != nil {
 			logger.Error().Err(err).Msg("get oidc metadata error")
 			jsonError(w, http.StatusBadRequest, err)
@@ -337,7 +337,7 @@ func oidcStart(w http.ResponseWriter, r *http.Request) {
 	options = append(options, oauth2.SetAuthURLParam("nonce", s.OIDCClient.Nonce))
 	//TODO: add more response modes
 	options = append(options, oauth2.SetAuthURLParam("response_mode", "form_post"))
-	http.Redirect(w, r, s.OIDCClient.Config.AuthCodeURL(s.OIDCClient.Nonce, options...), http.StatusFound)
+	http.Redirect(w, r, s.OIDCClient.Config.AuthCodeURL(s.OIDCClient.Nonce, options...), http.StatusFound) //#nosec G710
 
 }
 func oidcCallback(w http.ResponseWriter, r *http.Request) {
@@ -412,7 +412,7 @@ func oidcCallback(w http.ResponseWriter, r *http.Request) {
 	m.Lock()
 	tokenResponse[id] = &tokens
 	m.Unlock()
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //#nosec G124 --dev mode allowed
 		Name:     "tokens",
 		Value:    id,
 		Path:     "/",
