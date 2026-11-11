@@ -6,6 +6,8 @@
         ":automergeMinor",
         ":disableMajorUpdates"
     ],
+    "minimumReleaseAge": "7 days",
+    "minimumReleaseAgeBehaviour": "timestamp-required",
     "packageRules": [
         {
             "groupName": "Github Actions",
