@@ -34,7 +34,7 @@ require (
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
-	github.com/elimity-com/scim v0.0.0-20260728105928-2641426a1539
+	github.com/elimity-com/scim v0.0.0-20261113092633-5fffe914c211
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
