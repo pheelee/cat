@@ -15,6 +15,8 @@ github.com/dustin/go-humanize v1.1.0 h1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2
 github.com/dustin/go-humanize v1.1.0/go.mod h1:hc1CvRkJMsgxqjmjMQF3QNRAZBwY8AXBAzKYoSX9sFI=
 github.com/elimity-com/scim v0.0.0-20260728105928-2641426a1539 h1:xZWHbTeRWqbowyZgmf6NYgCa6gw94g+ekG4f8TfIp3Q=
 github.com/elimity-com/scim v0.0.0-20260728105928-2641426a1539/go.mod h1:dpiTnMjNr1HGBYKa+Rm6nljbWfApPKBFLIdOdK8fXnE=
+github.com/elimity-com/scim v0.0.0-20261113092633-5fffe914c211 h1:OgMK4yR0kLeklASUsgFhJdZ0pRBYk5sUFo2KBcvnqyo=
+github.com/elimity-com/scim v0.0.0-20261113092633-5fffe914c211/go.mod h1:dpiTnMjNr1HGBYKa+Rm6nljbWfApPKBFLIdOdK8fXnE=
 github.com/go-chi/chi/v5 v5.5.0 h1:xdKQ1dJmVJsmgahrXSKhUx8NyVPzpwdlyrrQFpMPJgg=
 github.com/go-chi/chi/v5 v5.5.0/go.mod h1:d1IG7GtKPSjPyBP365PH8sAGVHk3qfB/IhjFNRH1wWM=
 github.com/go-jose/go-jose/v4 v4.1.9 h1:pKfeQkig1NmgK4hJrZYXLEYURXfoJB61Larw0uIW4gY=
